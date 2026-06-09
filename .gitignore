@@ -1,0 +1,427 @@
+# ============================================================================
+# CLASS 4 LEARNING HUB - GITIGNORE FILE
+# Excludes sensitive, temporary, and system-specific files from version control
+# ============================================================================
+
+# ============================================================================
+# PYTHON FILES
+# ============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pythonenv*
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# ============================================================================
+# STREAMLIT SPECIFIC
+# ============================================================================
+
+# Streamlit secrets (sensitive data)
+.streamlit/secrets.toml
+.streamlit/secrets/
+
+# Streamlit cache
+.streamlit/cache/
+.streamlit/uploads/
+.streamlit/db/
+
+# Streamlit logs
+.streamlit/logs/
+
+# Local Streamlit config (keep template, ignore local changes)
+.streamlit/config.local.toml
+
+# ============================================================================
+# DATABASE FILES
+# ============================================================================
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+*.db3
+
+# Backups
+*.backup
+*.bak
+backups/
+*.sql
+
+# ============================================================================
+# USER DATA AND PROGRESS
+# ============================================================================
+
+# User progress data
+user_progress.json
+user_data.json
+progress_*.json
+student_data/
+*.progress
+
+# Session data
+session_data/
+*.session
+*.pkl
+
+# ============================================================================
+# API KEYS AND SECRETS
+# ============================================================================
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+
+# API keys
+*.key
+*.pem
+*.crt
+*.p12
+secrets/
+keys/
+credentials.json
+token.json
+*.secret
+
+# Google Cloud credentials
+*.json.gcloud
+application_default_credentials.json
+
+# ============================================================================
+# LOGS AND TEMPORARY FILES
+# ============================================================================
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.#*
+\#*#
+.*.swp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ============================================================================
+# IDE AND EDITOR FILES
+# ============================================================================
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+.history/
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+.elc
+auto-save-list
+tramp
+.\#*
+
+# Vim
+*.swp
+*.swo
+*~
+.*.swp
+.*.swo
+
+# Atom
+.atom/
+.config
+
+# ============================================================================
+# CACHE DIRECTORIES
+# ============================================================================
+
+# Cache directories
+.cache/
+cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Browser cache
+.browser-cache/
+
+# Model cache (AI models)
+models_cache/
+.ai_cache/
+
+# ============================================================================
+# DEPLOYMENT AND PACKAGING
+# ============================================================================
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+*.whl
+
+# Docker
+*.dockerignore
+Dockerfile.dev
+.docker/
+
+# Kubernetes
+*.kubeconfig
+.helm/
+
+# ============================================================================
+# TESTING AND COVERAGE
+# ============================================================================
+
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+cov.xml
+*.cover
+.hypothesis/
+
+# pytest
+.pytest_cache/
+test_results/
+
+# ============================================================================
+# DOCUMENTATION
+# ============================================================================
+
+# Documentation builds
+docs/_build/
+site/
+_build/
+
+# API documentation
+*.api.json
+
+# ============================================================================
+# MEDIA FILES (Optional - uncomment if needed)
+# ============================================================================
+
+# User uploaded content (keep structure, exclude files)
+# uploads/
+# *.png
+# *.jpg
+# *.jpeg
+# *.gif
+# *.mp4
+# *.mp3
+# *.wav
+
+# ============================================================================
+# BACKUP AND ARCHIVE FILES
+# ============================================================================
+
+# Backup files
+*.backup
+*.bak
+*.old
+*.orig
+*.rej
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# ============================================================================
+# MISC
+# ============================================================================
+
+# Local development configuration
+config.local.*
+*.local
+
+# Feature flags
+.feature_flags
+
+# Telemetry
+.telemetry
+
+# Crash reports
+crash_reports/
+
+# Profiling data
+*.prof
+*.lprof
+
+# ============================================================================
+# EXCEPTIONS (Files to KEEP even if pattern matches)
+# ============================================================================
+
+# Keep example environment file
+!.env.example
+!.env.sample
+
+# Keep example config
+!.streamlit/config.toml.example
+
+# Keep README and docs
+!README.md
+!LICENSE
+!*.md
+
+# Keep requirements files
+!requirements.txt
+!requirements-dev.txt
+
+# Keep specific database schema
+!schema.sql
+!migrations/
+
+# Keep sample data
+!sample_data/
+!*.sample
+
+# ============================================================================
+# NOTES FOR CONTRIBUTORS
+# ============================================================================
+# 
+# 1. NEVER commit .env files containing API keys
+# 2. NEVER commit secrets.toml with production credentials
+# 3. ALWAYS use .env.example as a template
+# 4. User progress data should stay local (not in repo)
+# 5. Cache files should not be version controlled
+# 6. IDE configuration is personal - keep .gitignore
+# 
+# ============================================================================
