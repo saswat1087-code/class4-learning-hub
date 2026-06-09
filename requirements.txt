@@ -1,24 +1,37 @@
-# Core Framework
-streamlit>=1.28.0
-python-dotenv>=1.0.0
+# ============================================================================
+# CLASS 4 LEARNING HUB - DEPENDENCIES (Groq API Version)
+# Python 3.8+ Required
+# ============================================================================
 
-# AI and Machine Learning - Updated for Gemini 2.0
-google-generativeai>=0.8.0
+# Core Framework
+# ----------------------------------------------------------------------------
+streamlit>=1.28.0,<2.0.0          # Web application framework
+python-dotenv>=1.0.0               # Environment variable management
+
+# AI and Machine Learning - Groq API (OpenAI-compatible)
+# ----------------------------------------------------------------------------
+openai>=1.0.0                      # For Groq API calls (Groq uses OpenAI-compatible SDK)
+groq>=0.5.0                        # Official Groq Python SDK (alternative)
 
 # Data Processing and Visualization
-pandas>=2.0.0
-numpy>=1.24.0
-plotly>=5.17.0
+# ----------------------------------------------------------------------------
+pandas>=2.0.0                      # Data manipulation and analysis
+numpy>=1.24.0                      # Numerical computing
+plotly>=5.17.0                     # Interactive visualizations
 
-# Data Storage (sqlite3 is built into Python)
-sqlalchemy>=2.0.0
+# Data Storage (sqlite3 is built into Python - no need to install)
+# ----------------------------------------------------------------------------
+sqlalchemy>=2.0.0                  # SQL toolkit and ORM
 
 # Image Processing
-Pillow>=10.0.0
+# ----------------------------------------------------------------------------
+Pillow>=10.0.0                     # Image processing and manipulation
 
 # HTTP and API Requests
-requests>=2.31.0
+# ----------------------------------------------------------------------------
+requests>=2.31.0                   # HTTP library for API calls
 
 # Utilities
-python-dateutil>=2.8.2
-pytz>=2023.3
+# ----------------------------------------------------------------------------
+python-dateutil>=2.8.2             # Date parsing and manipulation
+pytz>=2023.3                       # Timezone handling
