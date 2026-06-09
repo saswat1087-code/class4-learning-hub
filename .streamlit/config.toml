@@ -1,0 +1,411 @@
+# ============================================================================
+# STREAMLIT CONFIGURATION FILE
+# Class 4 Learning Hub - Production Settings
+# ============================================================================
+
+# ============================================================================
+# THEME CONFIGURATION
+# ============================================================================
+
+[theme]
+# Base theme - using custom theme for kid-friendly appearance
+base = "light"
+
+# Primary color for buttons, links, and interactive elements
+primaryColor = "#667eea"
+
+# Background color for the main content area
+backgroundColor = "#F9FBFD"
+
+# Background color for the sidebar
+secondaryBackgroundColor = "#FFFFFF"
+
+# Text color for better readability
+textColor = "#2E5B88"
+
+# Font configuration - kid-friendly fonts
+font = "sans serif"
+
+# ============================================================================
+# SERVER CONFIGURATION
+# ============================================================================
+
+[server]
+# Maximum file upload size (10 MB) - students can upload homework
+maxUploadSize = 10
+
+# Enable CORS protection for security
+enableCORS = true
+
+# Enable Cross-Site Request Forgery protection
+enableXsrfProtection = true
+
+# Run on all network interfaces (for deployment)
+address = "0.0.0.0"
+
+# Port configuration (default Streamlit port)
+port = 8501
+
+# WebSocket compression for better performance
+websocketCompression = true
+
+# Health check endpoint for monitoring
+healthCheck = true
+
+# ============================================================================
+# BROWSER CONFIGURATION
+# ============================================================================
+
+[browser]
+# Gather usage statistics (disabled for privacy)
+gatherUsageStats = false
+
+# Server address for the browser to connect
+serverAddress = "localhost"
+
+# Server port for the browser to connect
+serverPort = 8501
+
+# ============================================================================
+# CLIENT CONFIGURATION
+# ============================================================================
+
+[client]
+# Show error details in the browser (helpful for debugging)
+showErrorDetails = true
+
+# Toolbar mode: 'auto', 'developer', 'minimal', or 'viewer'
+toolbarMode = "auto"
+
+# Display the sidebar by default
+showSidebarNavigation = true
+
+# ============================================================================
+# UI CONFIGURATION
+# ============================================================================
+
+[ui]
+# Hide the default Streamlit menu in production
+hideMenu = false
+
+# Hide the "Made with Streamlit" footer
+hideFooter = false
+
+# Default page width (in pixels)
+defaultWidth = "wide"
+
+# ============================================================================
+# LOGGER CONFIGURATION
+# ============================================================================
+
+[logger]
+# Log level: 'error', 'warning', 'info', 'debug'
+level = "info"
+
+# Log message format
+messageFormat = "%(asctime)s - %(levelname)s - %(message)s"
+
+# ============================================================================
+# CACHE CONFIGURATION
+# ============================================================================
+
+[runner]
+# Maximum cache memory (in MB)
+maxCacheSize = 500
+
+# Cache TTL (time to live in seconds)
+cacheTTL = 3600
+
+# Enable function caching for better performance
+enableCache = true
+
+# ============================================================================
+# DEPLOYMENT CONFIGURATION
+# ============================================================================
+
+[deprecation]
+# Show deprecation warnings (disabled for cleaner UI)
+showDeprecationWarning = false
+
+# Show file uploader encoding deprecation
+showFileUploaderEncoding = false
+
+# ============================================================================
+# MAPBOX CONFIGURATION (if used)
+# ============================================================================
+
+[mapbox]
+# Mapbox token (if using maps in future features)
+token = ""
+
+# ============================================================================
+# CUSTOM CONFIGURATION FOR CLASS 4 LEARNING HUB
+# ============================================================================
+
+[custom]
+# Application name
+appName = "Class 4 Learning Hub"
+
+# Application version
+appVersion = "2.0.0"
+
+# Support email for parent contact
+supportEmail = "support@class4learninghub.com"
+
+# Maximum daily API calls per user (rate limiting)
+maxApiCallsPerDay = 100
+
+# Session timeout (in minutes)
+sessionTimeout = 30
+
+# Enable offline mode (cached content)
+enableOfflineMode = false
+
+# Daily goal points
+dailyGoalPoints = 50
+
+# Points per correct answer
+pointsPerCorrectAnswer = 10
+
+# Points per quiz completion
+pointsPerQuiz = 20
+
+# Points per chapter completion
+pointsPerChapter = 50
+
+# Points for daily login bonus
+dailyLoginBonus = 15
+
+# Points for weekly streak
+weeklyStreakBonus = 100
+
+# ============================================================================
+# SECURITY CONFIGURATION
+# ============================================================================
+
+[security]
+# Allow CORS for specific origins (for API access)
+allowedOrigins = [
+    "http://localhost:8501",
+    "https://class4learninghub.streamlit.app",
+    "https://*.streamlit.app"
+]
+
+# CSRF protection settings
+csrfProtection = true
+
+# Cookie settings
+[cookie]
+# Secure cookie flag for HTTPS
+secure = true
+
+# SameSite policy: 'Strict', 'Lax', or 'None'
+sameSite = "Lax"
+
+# Cookie max age (in seconds)
+maxAge = 86400  # 24 hours
+
+# ============================================================================
+# DATABASE CONFIGURATION (for future implementation)
+# ============================================================================
+
+[database]
+# Database type: 'sqlite', 'postgresql', 'mysql'
+type = "sqlite"
+
+# SQLite file path
+sqlitePath = "learning_hub.db"
+
+# Connection pool size
+poolSize = 5
+
+# Maximum connections
+maxConnections = 20
+
+# Connection timeout (in seconds)
+connectionTimeout = 30
+
+# ============================================================================
+# EMAIL CONFIGURATION (for parent reports)
+# ============================================================================
+
+[email]
+# SMTP server
+smtpServer = "smtp.gmail.com"
+
+# SMTP port
+smtpPort = 587
+
+# Use TLS
+useTLS = true
+
+# Sender email address
+senderEmail = "noreply@class4learninghub.com"
+
+# Daily report time (24-hour format)
+dailyReportTime = "18:00"  # 6 PM
+
+# Weekly report day (0=Monday, 6=Sunday)
+weeklyReportDay = 5  # Friday
+
+# ============================================================================
+# AI CONFIGURATION
+# ============================================================================
+
+[ai]
+# Default AI model
+defaultModel = "gemini-1.5-flash"
+
+# Max tokens per response
+maxTokens = 500
+
+# Temperature (creativity level: 0-1)
+temperature = 0.7
+
+# Top P (nucleus sampling)
+topP = 0.9
+
+# Top K (top-k sampling)
+topK = 40
+
+# Enable safety filters
+enableSafetyFilters = true
+
+# Cache AI responses (reduce API calls)
+cacheResponses = true
+
+# ============================================================================
+# PERFORMANCE OPTIMIZATION
+# ============================================================================
+
+[performance]
+# Enable gzip compression
+enableGzip = true
+
+# Enable browser caching
+enableBrowserCaching = true
+
+# Static file cache TTL (in seconds)
+staticCacheTTL = 86400  # 24 hours
+
+# Image optimization
+optimizeImages = true
+
+# Lazy loading for images
+lazyLoadImages = true
+
+# ============================================================================
+# FEATURE FLAGS
+# ============================================================================
+
+[features]
+# Enable voice input
+voiceInput = false
+
+# Enable video lessons
+videoLessons = false
+
+# Enable peer tutoring
+peerTutoring = false
+
+# Enable parent dashboard
+parentDashboard = true
+
+# Enable certificate generation
+certificatesEnabled = true
+
+# Enable progress sharing
+progressSharing = true
+
+# Enable dark mode toggle
+darkModeToggle = false
+
+# Enable sound effects
+soundEffects = true
+
+# Enable animations
+animations = true
+
+# Enable offline mode
+offlineMode = false
+
+# ============================================================================
+# RATE LIMITING
+# ============================================================================
+
+[rate_limiting]
+# Max requests per minute per user
+maxRequestsPerMinute = 60
+
+# Max AI calls per hour
+maxAICallsPerHour = 20
+
+# Max quiz attempts per day
+maxQuizAttemptsPerDay = 30
+
+# Rate limiting window (in seconds)
+windowSeconds = 60
+
+# ============================================================================
+# MONITORING & ANALYTICS
+# ============================================================================
+
+[monitoring]
+# Enable performance monitoring
+enableMonitoring = false
+
+# Enable error tracking
+enableErrorTracking = true
+
+# Log API calls
+logAPICalls = false
+
+# Anonymous usage statistics (for app improvement)
+anonymousStats = false
+
+# Sampling rate for stats (0-1)
+samplingRate = 0.1
+
+# ============================================================================
+# BACKUP CONFIGURATION
+# ============================================================================
+
+[backup]
+# Enable auto-backup
+autoBackup = true
+
+# Backup frequency (in hours)
+backupFrequency = 24
+
+# Number of backups to keep
+backupRetention = 7
+
+# Backup directory
+backupDirectory = "backups"
+
+# Compress backups
+compressBackups = true
+
+# ============================================================================
+# LOCAL DEVELOPMENT SETTINGS
+# ============================================================================
+
+[dev]
+# Enable debug mode
+debug = false
+
+# Show tracebacks
+showTracebacks = true
+
+# Watch file changes (auto-reload)
+watchFiles = true
+
+# Run in development mode
+developmentMode = false
+
+# Hot reload delay (in seconds)
+hotReloadDelay = 1
+
+# ============================================================================
+# END OF CONFIGURATION
+# ============================================================================
