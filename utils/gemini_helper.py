@@ -52,7 +52,7 @@ class GeminiHelper:
                 self.is_available = False
                 return False
             
-            # IMPORTANT: Correct import syntax for Google Gemini AI
+            # CORRECT IMPORT SYNTAX for Google Gemini AI
             import google.generativeai as genai
             
             # Configure the API key
@@ -74,7 +74,7 @@ class GeminiHelper:
                 
         except ImportError as e:
             self.is_available = False
-            st.error(f"❌ Google Generative AI package not installed. Run: pip install google-generativeai\nDetails: {str(e)}")
+            st.error(f"❌ Google Generative AI package not installed. Run: pip install google-generativeai")
             return False
         except Exception as e:
             self.is_available = False
@@ -140,7 +140,7 @@ class GeminiHelper:
         # Rate limiting (max 10 requests per second)
         if self.last_request_time:
             time_diff = datetime.now() - self.last_request_time
-            if time_diff.total_seconds() < 0.1:  # 100ms between requests
+            if time_diff.total_seconds() < 0.1:
                 import time
                 time.sleep(0.1)
         
@@ -168,7 +168,6 @@ class GeminiHelper:
             
             # Limit cache size
             if len(self.cache) > 100:
-                # Remove oldest 20 entries
                 keys_to_remove = list(self.cache.keys())[:20]
                 for key in keys_to_remove:
                     del self.cache[key]
@@ -188,27 +187,20 @@ class GeminiHelper:
         """Provide fallback responses when AI is unavailable"""
         prompt_lower = prompt.lower()
         
-        # Keyword-based fallback responses
-        if any(word in prompt_lower for word in ['hello', 'hi', 'hey', 'greeting']):
+        if any(word in prompt_lower for word in ['hello', 'hi', 'hey']):
             return "👋 Hello! I'm your Exam Buddy! I'd love to help you learn, but my AI brain needs an API key to work fully. Ask your parent to add the Gemini API key to unlock all my features! 🌟"
         
-        elif any(word in prompt_lower for word in ['study', 'learn', 'help', 'tips']):
+        elif any(word in prompt_lower for word in ['study', 'learn', 'help']):
             return "📚 I'm here to help you study! Here are some tips:\n\n1. Read your chapter carefully\n2. Take notes as you read\n3. Practice with quizzes\n4. Ask questions when stuck\n\nWant me to explain a specific topic? Get my AI features working by adding the API key! 🚀"
         
-        elif any(word in prompt_lower for word in ['quiz', 'test', 'practice', 'question']):
+        elif any(word in prompt_lower for word in ['quiz', 'test', 'practice']):
             return "🏆 Quizzes are great for learning! Try these:\n\n• Make flashcards\n• Answer questions at the end of chapters\n• Teach what you learned to someone else\n\nI can generate custom quizzes once my AI features are enabled! ✨"
         
-        elif any(word in prompt_lower for word in ['math', 'multiplication', 'addition', 'subtraction', 'division']):
+        elif any(word in prompt_lower for word in ['math', 'multiplication', 'addition']):
             return "🧮 Math is fun! Here's a practice problem:\n\nWhat is 25 × 4?\n\n(Hint: Think 20×4 + 5×4)\n\nWant more practice? I can make custom worksheets when my AI is active! ➗"
         
-        elif any(word in prompt_lower for word in ['science', 'plant', 'animal', 'body', 'habitat']):
+        elif any(word in prompt_lower for word in ['science', 'plant', 'animal']):
             return "🔬 Science is amazing! Did you know? Plants make their own food through photosynthesis! 🌱\n\nI can explain more science topics once my AI features are connected! 🌟"
-        
-        elif any(word in prompt_lower for word in ['computer', 'memory', 'storage', 'gui', 'internet']):
-            return "💻 Great question about computers! Here's a quick fact: RAM is temporary memory that forgets when you turn off the computer, while ROM remembers forever! 💾\n\nI can explain more when my AI features are enabled!"
-        
-        elif any(word in prompt_lower for word in ['english', 'story', 'poem', 'literature']):
-            return "📖 I love stories! Reading helps improve your vocabulary and imagination. Try reading for 20 minutes every day! 📚\n\nAsk me for story explanations when my AI features are working!"
         
         else:
             return "🤖 I'm your Exam Buddy! Right now I'm in basic mode. To get full AI tutoring:\n\n1. Get a free Gemini API key from Google AI Studio\n2. Add it to your .env file or Streamlit secrets\n3. Restart the app\n\nThen I can answer any question, create quizzes, and help you study better! 🚀"
@@ -216,7 +208,6 @@ class GeminiHelper:
     def summarize_content(self, content: str, for_child: bool = True) -> str:
         """Summarize educational content for better understanding"""
         if not self.is_available:
-            # Simple fallback summary
             sentences = content.split('.')[:3]
             return "📖 Here's a quick summary:\n\n" + '. '.join(sentences) + "...\n\n💡 For a better summary, please add your Gemini API key!"
         
@@ -251,20 +242,9 @@ class GeminiHelper:
         
         return self.generate_response(prompt)
     
-    def create_quiz_questions(
-        self, 
-        content: str, 
-        num_questions: int = 5,
-        difficulty: str = "easy"
-    ) -> List[Dict]:
-        """
-        Create multiple choice quiz questions from content
-        
-        Returns:
-            List of question dictionaries with keys: question, options, answer, explanation
-        """
+    def create_quiz_questions(self, content: str, num_questions: int = 5, difficulty: str = "easy") -> List[Dict]:
+        """Create multiple choice quiz questions from content"""
         if not self.is_available:
-            # Return sample questions as fallback
             return [
                 {
                     "question": "What is the main topic of this chapter?",
@@ -283,38 +263,35 @@ class GeminiHelper:
         {{
             "questions": [
                 {{
-                    "question": "What is the capital of France?",
-                    "options": ["A) London", "B) Berlin", "C) Paris", "D) Madrid"],
-                    "answer": "C",
-                    "explanation": "Paris is the capital city of France. It is known for the Eiffel Tower."
+                    "question": "What is the question?",
+                    "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+                    "answer": "A",
+                    "explanation": "Explanation here"
                 }}
             ]
         }}
         
-        Make questions fun and engaging. Use emojis in questions. Ensure answers are clear.
+        Make questions fun and engaging. Use emojis in questions.
         Return ONLY valid JSON, no other text.
         """
         
         response = self.generate_response(prompt, temperature=0.8)
         
-        # Try to parse JSON response
         try:
-            # Extract JSON from response
             json_match = re.search(r'\{.*\}', response, re.DOTALL)
             if json_match:
                 json_str = json_match.group()
                 data = json.loads(json_str)
                 return data.get('questions', [])
-        except json.JSONDecodeError:
+        except:
             pass
         
-        # Return empty list if parsing fails
         return []
     
     def explain_concept(self, concept: str) -> str:
         """Explain a concept in a child-friendly way"""
         if not self.is_available:
-            return f"📚 {concept} is an interesting topic! I'd love to explain it to you, but my AI features need an API key to work. Ask your parent to add the Gemini API key, then I can give you a fun, simple explanation! 🌟"
+            return f"📚 {concept} is an interesting topic! I'd love to explain it to you, but my AI features need an API key to work. Ask your parent to add the Gemini API key! 🌟"
         
         prompt = f"""
         Explain this concept to a 9-year-old Class 4 student: {concept}
@@ -330,152 +307,23 @@ class GeminiHelper:
         
         return self.generate_response(prompt, temperature=0.9)
     
-    def generate_study_tips(self, subject: str = None) -> str:
-        """Generate study tips for a specific subject or general"""
-        if not self.is_available:
-            return """📚 **Here are some general study tips:**
-            
-            • 📖 Read for 20 minutes every day
-            • ✏️ Take notes while studying
-            • 🎯 Practice with quizzes regularly
-            • 💡 Teach what you learned to someone else
-            • 🌙 Review before going to sleep
-            
-            For personalized tips, add your Gemini API key!"""
-        
-        if subject:
-            prompt = f"""
-            Give 3 specific study tips for a Class 4 student learning {subject}.
-            Make each tip:
-            - Actionable (something they can do today)
-            - Fun (add emojis)
-            - Age-appropriate
-            
-            Format as bullet points with emojis.
-            """
-        else:
-            prompt = """
-            Give 5 general study tips for a Class 4 student.
-            Make them:
-            - Easy to remember
-            - Fun (use emojis)
-            - Practical for daily use
-            
-            Start with "Here are your study superpowers for today!"
-            """
-        
-        return self.generate_response(prompt, temperature=0.8)
-    
-    def check_answer(self, question: str, user_answer: str, correct_answer: str) -> Dict:
-        """
-        Check if answer is correct and provide feedback
-        
-        Returns:
-            Dictionary with keys: is_correct, feedback, points_earned
-        """
-        if not self.is_available:
-            # Simple fallback answer checking
-            is_correct = user_answer.strip().lower() == correct_answer.strip().lower()
-            return {
-                'is_correct': is_correct,
-                'feedback': "Great try! " + ("Correct!" if is_correct else "Keep practicing!") + " 🌟",
-                'points': 5 if is_correct else 2
-            }
-        
-        prompt = f"""
-        Question: {question}
-        Student's answer: {user_answer}
-        Correct answer: {correct_answer}
-        
-        Analyze if the student is correct. Provide:
-        1. Is it correct? (yes/no)
-        2. Encouraging feedback (1 sentence)
-        3. Points to award (5 if correct, 2 if incorrect but good try)
-        
-        Format as JSON: {{"is_correct": "yes/no", "feedback": "text", "points": number}}
-        """
-        
-        response = self.generate_response(prompt, temperature=0.5)
-        
-        try:
-            json_match = re.search(r'\{.*\}', response, re.DOTALL)
-            if json_match:
-                json_str = json_match.group()
-                result = json.loads(json_str)
-                return {
-                    'is_correct': result.get('is_correct', 'no').lower() == 'yes',
-                    'feedback': result.get('feedback', 'Keep trying!'),
-                    'points': result.get('points', 2)
-                }
-        except:
-            pass
-        
-        # Default response
-        return {
-            'is_correct': False,
-            'feedback': "Keep practicing! You'll get it next time! 🌟",
-            'points': 2
-        }
-    
     def get_motivation(self) -> str:
         """Get a motivational message for the student"""
         if not self.is_available:
             messages = [
                 "🌟 You're doing great! Keep learning every day!",
                 "💪 Every expert was once a beginner. Keep going!",
-                "📚 The more you read, the more you know!",
-                "🎯 Small steps every day lead to big achievements!",
-                "⭐ Believe in yourself - you can do amazing things!"
+                "📚 The more you read, the more you know!"
             ]
             import random
             return random.choice(messages)
         
         prompt = """
-        Give a short, encouraging motivational message for a Class 4 student who is studying.
-        Use emojis, be positive, and make it feel like a high-five from a friend.
-        Keep it to 1 sentence.
+        Give a short, encouraging motivational message for a Class 4 student.
+        Use emojis, be positive. Keep it to 1 sentence.
         """
         
         return self.generate_response(prompt, temperature=1.0)
-    
-    def create_flashcards(self, content: str, num_cards: int = 5) -> List[Tuple[str, str]]:
-        """
-        Create flashcards from content
-        
-        Returns:
-            List of (term, definition) tuples
-        """
-        if not self.is_available:
-            # Return sample flashcards
-            return [
-                ("Keep studying!", "You're doing great! 🌟"),
-                ("Add API key", "Get personalized flashcards with Gemini API!")
-            ]
-        
-        prompt = f"""
-        Create {num_cards} flashcards for Class 4 students based on:
-        
-        {content}
-        
-        Format each flashcard as:
-        TERM: [important word/concept]
-        DEFINITION: [simple definition for 9-year-old]
-        
-        Separate each flashcard with "---"
-        """
-        
-        response = self.generate_response(prompt)
-        
-        flashcards = []
-        if "---" in response:
-            cards = response.split("---")
-            for card in cards[:num_cards]:
-                if "TERM:" in card and "DEFINITION:" in card:
-                    term = card.split("TERM:")[1].split("DEFINITION:")[0].strip()
-                    definition = card.split("DEFINITION:")[1].strip()
-                    flashcards.append((term, definition))
-        
-        return flashcards if flashcards else [("Keep practicing!", "You're doing great! 🌟")]
     
     def get_usage_stats(self) -> Dict:
         """Get AI usage statistics"""
