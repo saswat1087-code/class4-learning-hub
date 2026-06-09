@@ -21,7 +21,7 @@ plotly>=5.17.0                     # Interactive visualizations
 # Data Storage and Management
 # ----------------------------------------------------------------------------
 sqlalchemy>=2.0.0                  # SQL toolkit and ORM
-sqlite3                            # Built-in - no installation needed
+# Note: sqlite3 is built into Python - no need to install it!
 
 # Image Processing
 # ----------------------------------------------------------------------------
@@ -38,84 +38,5 @@ pytz>=2023.3                       # Timezone handling
 
 # Development and Debugging (Optional)
 # ----------------------------------------------------------------------------
-streamlit-option-menu>=0.3.2       # Enhanced menu components (optional)
-streamlit-extras>=0.2.0            # Extra Streamlit components (optional)
-
-# Testing (Development only)
-# ----------------------------------------------------------------------------
-pytest>=7.4.0                      # Testing framework
-pytest-cov>=4.1.0                  # Code coverage reporting
-
-# ============================================================================
-# INSTALLATION COMMANDS
-# ============================================================================
-
-# For production (minimal dependencies):
-# pip install -r requirements.txt
-
-# For development (with testing tools):
-# pip install -r requirements.txt && pip install pytest pytest-cov
-
-# For deployment on Streamlit Cloud:
-# No installation needed - Streamlit Cloud reads this file automatically
-
-# ============================================================================
-# VERSION COMPATIBILITY NOTES
-# ============================================================================
-
-# Python Version: 3.8 or higher (3.9+ recommended)
-# Tested on: Python 3.9, 3.10, 3.11
-# Platform: Windows, macOS, Linux
-
-# Known working combinations:
-# - streamlit==1.28.0 with google-generativeai==0.3.0
-# - streamlit==1.29.0 with google-generativeai==0.3.2
-
-# ============================================================================
-# OPTIONAL DEPENDENCIES (Not required for basic functionality)
-# ============================================================================
-
-# For voice input feature (if enabled):
-# pip install SpeechRecognition==3.10.0
-# pip install pyttsx3==2.90          # Text-to-speech
-
-# For PDF report generation:
-# pip install reportlab==4.0.0        # PDF generation
-# pip install fpdf2==2.7.4            # Alternative PDF library
-
-# For Excel export:
-# pip install openpyxl==3.1.0         # Excel file support
-
-# For database support (beyond SQLite):
-# pip install psycopg2-binary==2.9.9   # PostgreSQL
-# pip install mysql-connector-python==8.1.0  # MySQL
-
-# For enhanced caching:
-# pip install redis==5.0.0             # Redis cache backend
-
-# For monitoring and logging:
-# pip install prometheus-client==0.17.0  # Metrics export
-
-# ============================================================================
-# FROZEN REQUIREMENTS (For exact version replication)
-# ============================================================================
-# To generate frozen requirements after installation:
-# pip freeze > requirements-frozen.txt
-# 
-# This ensures exact version matching across environments.
-# Use for production deployment to avoid unexpected updates.
-
-# ============================================================================
-# TROUBLESHOOTING
-# ============================================================================
-
-# If you encounter installation errors:
-# 1. Upgrade pip: python -m pip install --upgrade pip
-# 2. Use virtual environment: python -m venv venv
-# 3. Install with --no-cache-dir: pip install --no-cache-dir -r requirements.txt
-# 4. On macOS with M1/M2 chip: pip install --no-binary :all: streamlit
-
-# If Google Generative AI fails:
-# pip install --upgrade google-auth google-auth-oauthlib google-auth-httplib2
-
-# ============================================================================
+# streamlit-option-menu>=0.3.2       # Enhanced menu components (optional)
+# streamlit-extras>=0.2.0            # Extra Streamlit components (optional)
