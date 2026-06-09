@@ -7,7 +7,7 @@ import streamlit as st
 import random
 from datetime import datetime
 from utils.data_manager import data_manager
-from utils.gemini_helper import get_gemini_helper
+from utils.groq_helper import get_groq_helper
 
 # Page configuration
 st.set_page_config(
@@ -162,7 +162,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Initialize helper
-gemini_helper = get_gemini_helper()
+groq_helper = get_groq_helper()
 
 # Syllabus Data (expanded)
 SYLLABUS_DATA = {
