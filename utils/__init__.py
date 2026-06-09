@@ -4,10 +4,18 @@ Makes utility modules easily importable throughout the application
 """
 
 from utils.data_manager import DataManager, get_data_manager, data_manager
-from utils.gemini_helper import GeminiHelper, get_gemini_helper
+from utils.groq_helper import GroqHelper, get_groq_helper
+
+# For backwards compatibility with existing code that expects gemini_helper
+# This creates an alias so old code still works
+try:
+    from utils.groq_helper import GroqHelper as GeminiHelper
+    from utils.groq_helper import get_groq_helper as get_gemini_helper
+except ImportError:
+    pass
 
 # Package metadata
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __author__ = "Class 4 Learning Hub"
 __description__ = "Utility modules for Class 4 Learning Platform"
 
@@ -15,14 +23,14 @@ __description__ = "Utility modules for Class 4 Learning Platform"
 def initialize_utilities():
     """
     Initialize all utility modules and ensure they're ready for use
-    Returns tuple of (data_manager, gemini_helper)
+    Returns tuple of (data_manager, groq_helper)
     """
     try:
         # Initialize data manager
         dm = get_data_manager()
         
-        # Initialize gemini helper
-        gh = get_gemini_helper()
+        # Initialize groq helper
+        gh = get_groq_helper()
         
         return dm, gh
     except Exception as e:
@@ -34,26 +42,9 @@ __all__ = [
     'DataManager',
     'get_data_manager',
     'data_manager',
-    'GeminiHelper',
-    'get_gemini_helper',
+    'GroqHelper',
+    'get_groq_helper',
+    'GeminiHelper',  # Alias for compatibility
+    'get_gemini_helper',  # Alias for compatibility
     'initialize_utilities'
 ]
-
-# Package-level docstring
-"""
-Class 4 Learning Hub - Utility Modules
-======================================
-
-This package contains helper modules for:
-- data_manager: Handles user progress tracking, achievements, and data persistence
-- gemini_helper: Manages AI interactions with Google's Gemini API
-
-Usage:
-    from utils import data_manager, gemini_helper
-    
-    # Track progress
-    data_manager.award_points(50, "Completed quiz!")
-    
-    # Get AI help
-    response = gemini_helper.generate_response("Explain photosynthesis")
-"""
