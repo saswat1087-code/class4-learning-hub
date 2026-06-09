@@ -2,15 +2,15 @@
 streamlit>=1.28.0
 python-dotenv>=1.0.0
 
-# AI and Machine Learning
-google-generativeai>=0.3.0
+# AI and Machine Learning - Updated for Gemini 2.0
+google-generativeai>=0.8.0
 
 # Data Processing and Visualization
 pandas>=2.0.0
 numpy>=1.24.0
 plotly>=5.17.0
 
-# Data Storage (sqlite3 is built into Python - no need to install)
+# Data Storage (sqlite3 is built into Python)
 sqlalchemy>=2.0.0
 
 # Image Processing
