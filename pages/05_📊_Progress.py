@@ -10,7 +10,7 @@ import plotly.express as px
 from datetime import datetime, timedelta
 from collections import defaultdict
 from utils.data_manager import data_manager
-from utils.groq_helper import get_groq_helper
+from utils import get_gemini_helper  # Using the alias from __init__.py
 
 # Page configuration
 st.set_page_config(
@@ -22,7 +22,6 @@ st.set_page_config(
 # Custom CSS for progress page
 st.markdown("""
 <style>
-/* Progress cards */
 .progress-card {
     background: white;
     padding: 1.5rem;
@@ -31,13 +30,9 @@ st.markdown("""
     margin-bottom: 1rem;
     transition: transform 0.3s ease;
 }
-
 .progress-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
 }
-
-/* Achievement badge */
 .achievement-badge {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -47,124 +42,22 @@ st.markdown("""
     margin: 0.5rem;
     display: inline-block;
     min-width: 120px;
-    animation: fadeIn 0.5s ease;
 }
-
-/* Milestone tracker */
-.milestone-tracker {
-    background: #f8f9fa;
-    padding: 1rem;
-    border-radius: 10px;
-    margin: 0.5rem 0;
-}
-
-.milestone-point {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #e0e0e0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 0.5rem;
-    transition: all 0.3s ease;
-}
-
-.milestone-point.achieved {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    animation: bounce 0.5s ease;
-}
-
-/* Growth chart */
-.growth-chart {
-    background: white;
-    padding: 1rem;
-    border-radius: 15px;
-    margin: 1rem 0;
-}
-
-/* Certificate card */
-.certificate-card {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    padding: 1.5rem;
-    border-radius: 15px;
-    text-align: center;
-    border: 2px solid gold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.certificate-card:hover {
-    transform: scale(1.02);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-}
-
-/* Animations */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes bounce {
-    0%, 100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-10px);
-    }
-}
-
-/* Stats number */
 .stat-number-large {
     font-size: 2.5rem;
     font-weight: bold;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    background-clip: text;
 }
-
-/* Heatmap */
-.heatmap-cell {
-    width: 30px;
-    height: 30px;
-    background: #e0e0e0;
-    margin: 2px;
-    display: inline-block;
-    border-radius: 5px;
-    transition: all 0.3s ease;
-}
-
-.heatmap-cell.active {
-    background: #4CAF50;
-    animation: pulse 0.5s ease;
-}
-
-/* Recommendation card */
-.recommendation-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 1rem;
-    border-radius: 10px;
-    margin: 0.5rem 0;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.recommendation-card:hover {
-    transform: translateX(5px);
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize helper
+# Initialize helper - using alias
 gemini_helper = get_gemini_helper()
 
 # Header
@@ -238,18 +131,16 @@ st.markdown("## 🎯 Level Progress")
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    # Calculate progress to next level
     if level_info['points_to_next'] > 0:
         current_level_points = progress_report['total_points'] - level_info['points_required']
-        progress_percent = (current_level_points / level_info['points_to_next']) * 100
-        progress_percent = min(100, max(0, progress_percent))
+        progress_percent = min(100, max(0, (current_level_points / level_info['points_to_next']) * 100))
         
         st.markdown(f"""
         <div class="progress-card">
             <div style="margin-bottom: 1rem;">
                 <strong>Current Level:</strong> {level_info['level']} - {level_info['title']}
             </div>
-            <div class="stProgress">
+            <div style="background: #e0e0e0; border-radius: 15px; overflow: hidden;">
                 <div style="width: {progress_percent}%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 30px; border-radius: 15px; display: flex; align-items: center; justify-content: center; color: white;">
                     {progress_percent:.0f}%
                 </div>
@@ -263,7 +154,6 @@ with col1:
         st.success(f"🏆 MAX LEVEL REACHED! You're a {level_info['title']}! 🏆")
 
 with col2:
-    # Next level preview
     st.markdown(f"""
     <div class="progress-card">
         <div style="text-align: center;">
@@ -282,7 +172,6 @@ if progress_report['subject_mastery']:
     subjects = list(progress_report['subject_mastery'].keys())
     scores = list(progress_report['subject_mastery'].values())
     
-    # Create radar chart for subject mastery
     fig = go.Figure(data=go.Scatterpolar(
         r=scores,
         theta=subjects,
@@ -295,8 +184,7 @@ if progress_report['subject_mastery']:
         polar=dict(
             radialaxis=dict(
                 visible=True,
-                range=[0, 100],
-                tickvals=[0, 25, 50, 75, 100]
+                range=[0, 100]
             )
         ),
         showlegend=False,
@@ -313,7 +201,6 @@ else:
 st.markdown("## 📊 Quiz Performance Over Time")
 
 if st.session_state.quiz_scores:
-    # Prepare data for timeline
     quiz_data = []
     for quiz_name, score_data in st.session_state.quiz_scores.items():
         if isinstance(score_data, dict):
@@ -348,7 +235,6 @@ if st.session_state.quiz_scores:
         
         st.plotly_chart(fig, use_container_width=True)
         
-        # Show trend
         if len(df) > 1:
             first_score = df.iloc[0]['Score']
             last_score = df.iloc[-1]['Score']
@@ -357,19 +243,18 @@ if st.session_state.quiz_scores:
             if improvement > 0:
                 st.success(f"📈 Amazing progress! Your scores have improved by {improvement:.0f}%! 🎉")
             elif improvement < 0:
-                st.info(f"💪 Keep practicing! Your scores will improve with more practice. You've got this!")
+                st.info(f"💪 Keep practicing! Your scores will improve. You've got this!")
             else:
-                st.info(f"🌟 Keep up the consistent work! You're maintaining good scores!")
+                st.info(f"🌟 Keep up the consistent work!")
 else:
     st.info("🎯 Take your first quiz to start tracking your performance!")
 
-# Study Streak and Activity Heatmap
-st.markdown("## 🔥 Study Streak & Activity")
+# Study Streak
+st.markdown("## 🔥 Study Streak")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    # Current streak display
     current_streak = progress_report['study_stats']['current_streak']
     longest_streak = progress_report['study_stats']['longest_streak']
     
@@ -381,20 +266,13 @@ with col1:
             <div><strong>Current Streak</strong></div>
             <small>Longest: {longest_streak} days</small>
             <div style="margin-top: 0.5rem;">
-                {'⭐' * min(current_streak, 5)} {'🌟' * max(0, current_streak - 5)}
+                {'⭐' * min(current_streak, 5)}
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Streak milestones
-    if current_streak >= 7:
-        st.success("🏆 Amazing! You've earned the 'Streak Champion' badge! Keep going!")
-    elif current_streak >= 3:
-        st.info("🎯 Great consistency! You're building a strong learning habit!")
 
 with col2:
-    # Study time this week
     total_study_time = progress_report['study_stats']['total_study_time']
     week_study_time = progress_report['study_stats']['week_study_time']
     
@@ -413,28 +291,23 @@ with col2:
 st.markdown("## 🏅 Your Badge Collection")
 
 if progress_report['badges']:
-    # Display badges in a grid
     badge_cols = st.columns(4)
-    for idx, badge in enumerate(progress_report['badges'][:8]):  # Show up to 8 badges
+    for idx, badge in enumerate(progress_report['badges'][:8]):
         with badge_cols[idx % 4]:
-            badge_config = data_manager.achievements_config["badges"].get(badge, {})
-            icon = badge_config.get("icon", "🏆")
-            description = badge_config.get("description", "Achievement unlocked!")
-            
             st.markdown(f"""
             <div class="achievement-badge">
-                <div style="font-size: 2rem;">{icon}</div>
+                <div style="font-size: 2rem;">🏆</div>
                 <div><strong>{badge}</strong></div>
-                <small>{description}</small>
+                <small>Achievement unlocked!</small>
             </div>
             """, unsafe_allow_html=True)
     
     if len(progress_report['badges']) > 8:
         st.info(f"And {len(progress_report['badges']) - 8} more badges! Keep collecting! 🌟")
 else:
-    st.info("🌟 Complete quizzes and study regularly to earn awesome badges! Start your journey today!")
+    st.info("🌟 Complete quizzes and study regularly to earn awesome badges!")
 
-# Recent Activity Timeline
+# Recent Activity
 st.markdown("## 📅 Recent Activity")
 
 recent_activity = data_manager.get_recent_activity(days=7)
@@ -447,62 +320,41 @@ if recent_activity:
 else:
     st.info("Start studying to see your activity timeline here!")
 
-# Milestones and Achievements
+# Milestones
 st.markdown("## 🎯 Learning Milestones")
 
-# Define milestones
 milestones = [
-    {"name": "First Quiz", "points": 50, "achieved": len(st.session_state.quiz_scores) >= 1},
-    {"name": "100 Points", "points": 100, "achieved": progress_report['total_points'] >= 100},
-    {"name": "5 Quizzes", "points": 150, "achieved": len(st.session_state.quiz_scores) >= 5},
-    {"name": "250 Points", "points": 250, "achieved": progress_report['total_points'] >= 250},
-    {"name": "10 Quizzes", "points": 300, "achieved": len(st.session_state.quiz_scores) >= 10},
-    {"name": "500 Points", "points": 500, "achieved": progress_report['total_points'] >= 500},
-    {"name": "Perfect Score", "points": 400, "achieved": any(score.get('percentage', 0) == 100 for score in st.session_state.quiz_scores.values())},
-    {"name": "7-Day Streak", "points": 350, "achieved": progress_report['study_stats']['current_streak'] >= 7}
+    {"name": "First Quiz", "achieved": len(st.session_state.quiz_scores) >= 1},
+    {"name": "100 Points", "achieved": progress_report['total_points'] >= 100},
+    {"name": "5 Quizzes", "achieved": len(st.session_state.quiz_scores) >= 5},
+    {"name": "250 Points", "achieved": progress_report['total_points'] >= 250},
+    {"name": "10 Quizzes", "achieved": len(st.session_state.quiz_scores) >= 10},
+    {"name": "500 Points", "achieved": progress_report['total_points'] >= 500},
+    {"name": "7-Day Streak", "achieved": progress_report['study_stats']['current_streak'] >= 7}
 ]
 
-# Display milestones
 milestone_cols = st.columns(4)
 for idx, milestone in enumerate(milestones):
     with milestone_cols[idx % 4]:
         if milestone['achieved']:
-            st.markdown(f"""
-            <div class="milestone-tracker" style="background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);">
-                <div style="text-align: center;">
-                    <div>✅</div>
-                    <div><strong>{milestone['name']}</strong></div>
-                    <small>Achieved! 🎉</small>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.success(f"✅ {milestone['name']}")
         else:
-            st.markdown(f"""
-            <div class="milestone-tracker">
-                <div style="text-align: center;">
-                    <div>🎯</div>
-                    <div><strong>{milestone['name']}</strong></div>
-                    <small>{milestone['points']} points</small>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.info(f"🎯 {milestone['name']}")
 
-# AI-Powered Insights and Recommendations
+# AI-Powered Insights
 st.markdown("## 🤖 AI Learning Insights")
 
 if progress_report['quiz_stats']['total_quizzes'] >= 3:
     with st.spinner("AI is analyzing your progress..."):
-        # Generate personalized insights
         insight_prompt = f"""
         Based on this student's learning data:
         - Best subject: {progress_report['quiz_stats']['best_subject']}
         - Average score: {progress_report['quiz_stats']['average_score']:.0f}%
         - Total points: {progress_report['total_points']}
         - Badges earned: {len(progress_report['badges'])}
-        - Study streak: {progress_report['study_stats']['current_streak']} days
         
-        Provide 3 personalized learning tips for a Class 4 student.
-        Keep each tip short (1 sentence) and encouraging. Use emojis.
+        Provide 3 short, encouraging learning tips for a Class 4 student.
+        Keep each tip to 1 sentence. Use emojis.
         """
         
         insights = gemini_helper.generate_response(insight_prompt)
@@ -517,164 +369,18 @@ if progress_report['quiz_stats']['total_quizzes'] >= 3:
 else:
     st.info("🤖 Take more quizzes (at least 3) for AI-powered personalized learning insights!")
 
-# Growth Predictions
-st.markdown("## 📈 Growth Forecast")
-
-if len(st.session_state.quiz_scores) >= 5:
-    # Simple trend prediction
-    scores = [score.get('percentage', 0) for score in st.session_state.quiz_scores.values() if isinstance(score, dict)]
-    if len(scores) >= 3:
-        recent_avg = sum(scores[-3:]) / 3
-        overall_avg = sum(scores) / len(scores)
-        
-        if recent_avg > overall_avg:
-            st.success(f"📈 You're on an upward trend! Your last 3 quizzes averaged {recent_avg:.0f}%, which is {recent_avg - overall_avg:.0f}% higher than your overall average. Keep up the great work! 🚀")
-        elif recent_avg < overall_avg:
-            st.info(f"💪 Your last few quizzes show room for growth. Your overall average is {overall_avg:.0f}%. Try reviewing the chapters before taking quizzes - you'll improve! 🌟")
-        else:
-            st.info(f"🎯 You're consistently scoring around {overall_avg:.0f}%. To level up, try the 'Study Tips' from Exam Buddy! 📚")
-        
-        # Projection
-        if recent_avg >= 80:
-            st.balloons()
-            st.success("🏆 EXCELLENT! At this rate, you're on track to become a subject master! Keep challenging yourself!")
-elif len(st.session_state.quiz_scores) > 0:
-    st.info(f"📊 Take {5 - len(st.session_state.quiz_scores)} more quizzes to unlock growth predictions!")
-
-# Certificate of Achievement
-st.markdown("## 🎓 Certificate of Achievement")
-
-if progress_report['total_points'] >= 500 or len(progress_report['badges']) >= 5:
-    st.markdown(f"""
-    <div class="certificate-card" onclick="alert('Congratulations! 🎓 You\'ve earned a Certificate of Achievement!')">
-        <div style="font-size: 3rem;">🎓</div>
-        <h3>Certificate of Achievement</h3>
-        <p>This certifies that</p>
-        <h2>{st.session_state.user_name}</h2>
-        <p>has demonstrated outstanding learning progress in Class 4</p>
-        <p><strong>{progress_report['total_points']} Points Earned</strong> | <strong>{len(progress_report['badges'])} Badges</strong></p>
-        <small>Click to download certificate</small>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    if st.button("📜 Generate Certificate PDF"):
-        # Create certificate content
-        certificate_content = f"""
-        CERTIFICATE OF ACHIEVEMENT
-        ===========================
-        
-        This certifies that
-        
-        {st.session_state.user_name}
-        
-        has demonstrated outstanding academic progress
-        
-        Points Earned: {progress_report['total_points']}
-        Badges Collected: {len(progress_report['badges'])}
-        Quizzes Completed: {progress_report['quiz_stats']['total_quizzes']}
-        Study Streak: {progress_report['study_stats']['current_streak']} days
-        
-        Date: {datetime.now().strftime("%B %d, %Y")}
-        
-        Keep shining! 🌟
-        """
-        
-        st.download_button(
-            label="📥 Download Certificate",
-            data=certificate_content,
-            file_name=f"certificate_{st.session_state.user_name}_{datetime.now().strftime('%Y%m%d')}.txt",
-            mime="text/plain"
-        )
+# AI Status
+st.markdown("---")
+if gemini_helper.is_available:
+    st.success("✅ AI Assistant is ready to provide personalized insights! (Powered by Groq/Llama)")
 else:
-    st.info("🎯 Earn 500 points or 5 badges to unlock your Certificate of Achievement! Keep going! 🌟")
+    st.warning("⚠️ Add your GROQ_API_KEY to Streamlit Secrets to enable AI learning insights.")
 
-# Share Progress
-st.markdown("---")
-st.markdown("## 📤 Share Your Progress")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    if st.button("📸 Take Progress Screenshot", use_container_width=True):
-        st.info("📸 Screenshot saved! Share your progress with parents and teachers!")
-
-with col2:
-    if st.button("📧 Email Progress Report", use_container_width=True):
-        report_text = data_manager.get_progress_report()
-        st.code(report_text, language="markdown")
-        st.success("Copy the report above to share via email!")
-
-with col3:
-    if st.button("🏆 Share Achievement", use_container_width=True):
-        if progress_report['badges']:
-            latest_badge = progress_report['badges'][-1]
-            st.balloons()
-            st.success(f"🎉 I just earned the '{latest_badge}' badge on Class 4 Learning Hub! 📚✨")
-        else:
-            st.info("Earn your first badge to share your achievement!")
-
-# Parent-Teacher Section
-st.markdown("---")
-st.markdown("## 👨‍👩‍👧 Parent-Teacher Corner")
-
-with st.expander("📊 Detailed Progress Report for Parents/Teachers"):
-    st.markdown("### Comprehensive Learning Analytics")
-    
-    # Generate detailed report
-    detailed_report = f"""
-    **Student Name:** {st.session_state.user_name}
-    **Report Date:** {datetime.now().strftime("%B %d, %Y")}
-    **Grade:** Class 4
-    
-    **Academic Progress:**
-    - Total Learning Points: {progress_report['total_points']}
-    - Current Level: {level_info['level']} - {level_info['title']}
-    - Chapters Completed: {progress_report['completion_stats']['chapters_completed']}/20
-    - Average Quiz Score: {progress_report['quiz_stats']['average_score']:.0f}%
-    - Best Subject: {progress_report['quiz_stats']['best_subject'] or 'N/A'}
-    
-    **Engagement Metrics:**
-    - Study Streak: {progress_report['study_stats']['current_streak']} days
-    - Longest Streak: {progress_report['study_stats']['longest_streak']} days
-    - Total Study Time: {progress_report['study_stats']['total_study_time']} minutes
-    - Badges Earned: {len(progress_report['badges'])}
-    - Quizzes Completed: {progress_report['quiz_stats']['total_quizzes']}
-    
-    **Subject Mastery:**
-    """
-    
-    for subject, score in progress_report['subject_mastery'].items():
-        detailed_report += f"\n    - {subject}: {score:.0f}%"
-    
-    detailed_report += f"""
-    
-    **Recommendations:**
-    - Continue encouraging regular study habits
-    - Focus on subjects with lower mastery scores
-    - Celebrate achievements and milestones
-    - Use Exam Buddy AI for additional support
-    
-    **Notes:**
-    The student has shown {'excellent' if progress_report['quiz_stats']['average_score'] >= 80 else 'good' if progress_report['quiz_stats']['average_score'] >= 60 else 'developing'} progress.
-    {'Continue the great work!' if progress_report['quiz_stats']['average_score'] >= 70 else 'Encourage consistent practice for improvement.'}
-    """
-    
-    st.markdown(detailed_report)
-    
-    # Download button for detailed report
-    st.download_button(
-        label="📥 Download Full Report (JSON)",
-        data=str(progress_report),
-        file_name=f"progress_report_{st.session_state.user_name}_{datetime.now().strftime('%Y%m%d')}.json",
-        mime="application/json"
-    )
-
-# Footer with motivation
+# Footer
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; padding: 2rem; color: #666;">
-    🌟 <strong>Remember:</strong> Progress is progress, no matter how small. Every point, every quiz, every day of studying 
-    brings you closer to your goals. Keep going, keep growing! 🌟
+    🌟 <strong>Remember:</strong> Progress is progress, no matter how small. Keep going, keep growing! 🌟
     <br><br>
     <small>📊 Track your progress daily and celebrate every achievement!</small>
 </div>
@@ -684,7 +390,6 @@ st.markdown("""
 if progress_report['total_points'] >= 1000 and 'milestone_1000' not in st.session_state:
     st.session_state.milestone_1000 = True
     st.balloons()
-    st.snow()
     st.success("🎉🎉🎉 INCREDIBLE MILESTONE! You've earned 1000 points - You're a Learning Legend! 🎉🎉🎉")
 
 elif progress_report['total_points'] >= 500 and 'milestone_500' not in st.session_state:
