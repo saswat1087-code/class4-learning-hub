@@ -218,7 +218,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Initialize helper
-gemini_helper = get_gemini_helper()
+groq_helper = get_groq_helper()
 
 # Initialize session state for chat
 if 'chat_messages' not in st.session_state:
