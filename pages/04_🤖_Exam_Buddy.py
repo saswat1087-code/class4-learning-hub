@@ -7,7 +7,7 @@ import streamlit as st
 import time
 from datetime import datetime
 from utils.data_manager import data_manager
-from utils.gemini_helper import get_gemini_helper
+from utils.groq_helper import get_groq_helper
 
 # Page configuration
 st.set_page_config(
