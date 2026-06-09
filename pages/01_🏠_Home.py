@@ -130,7 +130,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Initialize helper
-gemini_helper = get_gemini_helper()
+groq_helper = get_groq_helper()
 
 # Get current level info
 level_info = data_manager.get_current_level()
