@@ -1,6 +1,6 @@
 """
-Practice & Tests Page - Smart Multiple Choice with Question Type Detection
-Supports: Fill in the blanks, True/False, Multiple Choice, Matching
+Practice & Tests Page - Smart Question Extraction (No Numbering Needed)
+Detects questions using AI and patterns
 """
 
 import streamlit as st
@@ -90,69 +90,107 @@ st.markdown("""
 st.markdown("""
 <div style="text-align: center; margin-bottom: 2rem;">
     <h1>🏆 Practice & Assessment Zone</h1>
-    <p>Smart questions - Multiple Choice, True/False, Fill in the Blanks! 📄</p>
+    <p>Smart questions extracted from your PDFs - No numbering needed! 📄</p>
 </div>
 """, unsafe_allow_html=True)
 
-def detect_question_type(question_text: str) -> str:
-    """Detect the type of question based on its content"""
-    text_lower = question_text.lower()
+def extract_questions_smart(text: str) -> list:
+    """Extract questions intelligently without relying on numbering"""
+    questions = []
     
-    # True/False detection
-    if any(phrase in text_lower for phrase in ['true or false', 'true/false', 'state whether', 'is it true', 'is this true']):
-        return "truefalse"
+    if not text:
+        return questions
     
-    # Fill in the blanks detection
-    if any(symbol in question_text for symbol in ['_____', '___', '______', '__', 'blank', 'fill in']):
-        return "fillblank"
+    lines = text.split('\n')
     
-    # Multiple choice detection (already has options or keywords)
-    if any(phrase in text_lower for phrase in ['choose', 'select', 'which of the following', 'which one', 'multiple choice']):
-        return "mcq"
+    # Method 1: Look for sentences ending with question marks
+    for line in lines:
+        line = line.strip()
+        # Check if line ends with question mark and has reasonable length
+        if line.endswith('?') and 20 < len(line) < 300:
+            # Clean up the question
+            clean_q = re.sub(r'^\d+[\.\)]\s*', '', line)  # Remove numbering if present
+            if clean_q and clean_q not in questions:
+                questions.append(clean_q)
     
-    # Default to multiple choice
-    return "mcq"
+    # Method 2: Look for lines that start with question words
+    question_words = ['what', 'why', 'how', 'when', 'where', 'which', 'who', 'whom', 
+                      'define', 'explain', 'describe', 'list', 'name', 'state', 
+                      'differentiate', 'compare', 'distinguish']
+    
+    for line in lines:
+        line = line.strip()
+        line_lower = line.lower()
+        # Check if line starts with question word and has reasonable length
+        if any(line_lower.startswith(qw) for qw in question_words):
+            if 20 < len(line) < 300 and line not in questions:
+                questions.append(line)
+    
+    # Method 3: Look for lines that are likely questions (capital start, meaningful content)
+    for line in lines:
+        line = line.strip()
+        # Check if line has capital letter at start and contains question-like patterns
+        if (line and line[0].isupper() and 
+            len(line) > 25 and 
+            any(word in line.lower() for word in ['?', 'explain', 'describe', 'define', 'what is', 'how does'])):
+            if line not in questions and not line.endswith('.'):
+                questions.append(line)
+    
+    # Method 4: Use AI to identify questions if traditional methods fail
+    if len(questions) < 3 and len(text) > 200:
+        try:
+            gemini_helper = get_gemini_helper()
+            prompt = f"""
+            Extract all the questions from this text. Return ONLY the questions, one per line.
+            Do not include any other text or numbering.
+            
+            Text:
+            {text[:2000]}
+            """
+            ai_questions = gemini_helper.generate_response(prompt, temperature=0.3)
+            if ai_questions:
+                for line in ai_questions.split('\n'):
+                    line = line.strip()
+                    if line and len(line) > 15 and '?' in line:
+                        questions.append(line)
+        except:
+            pass
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_questions = []
+    for q in questions:
+        if q not in seen:
+            seen.add(q)
+            unique_questions.append(q)
+    
+    return unique_questions[:25]  # Limit to 25 questions
 
-def generate_question_with_options(question_text: str, index: int) -> dict:
-    """Generate appropriate options based on question type"""
-    
-    question_type = detect_question_type(question_text)
+def generate_smart_question(question_text: str, index: int) -> dict:
+    """Generate appropriate question with options using AI"""
     
     prompt = f"""
-    Create an interactive question for Class 4 students based on: "{question_text}"
+    Convert this question into an interactive multiple choice question for Class 4 students:
     
-    Question type detected: {question_type}
+    Original question: "{question_text}"
     
-    Generate response in JSON format:
+    Generate a response in JSON format with:
+    1. "question": A clear, well-formatted version of the question
+    2. "options": 4 options (A, B, C, D) with one correct answer
+    3. "correct": The letter of the correct option (A, B, C, or D)
+    4. "explanation": A simple explanation for a 9-year-old
+    5. "type": "mcq"
     
-    For MULTIPLE CHOICE (mcq):
+    Example:
     {{
-        "question": "Clear question text",
-        "type": "mcq",
-        "options": ["A) First option", "B) Second option", "C) Third option", "D) Fourth option"],
-        "correct": "A",
-        "explanation": "Why this is correct"
+        "question": "What is the main function of RAM in a computer?",
+        "options": ["A) Permanent storage", "B) Temporary storage", "C) Processing data", "D) Displaying images"],
+        "correct": "B",
+        "explanation": "RAM is temporary memory that stores data while the computer is running.",
+        "type": "mcq"
     }}
     
-    For TRUE/FALSE (truefalse):
-    {{
-        "question": "Statement to judge as true or false",
-        "type": "truefalse",
-        "options": ["A) True", "B) False"],
-        "correct": "A",
-        "explanation": "Explanation why this is true or false"
-    }}
-    
-    For FILL IN THE BLANKS (fillblank):
-    {{
-        "question": "Question with _____ blank space",
-        "type": "fillblank",
-        "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
-        "correct": "A",
-        "explanation": "Why this word/phrase fits the blank"
-    }}
-    
-    Return ONLY valid JSON.
+    Return ONLY valid JSON, no other text.
     """
     
     try:
@@ -161,61 +199,26 @@ def generate_question_with_options(question_text: str, index: int) -> dict:
         json_match = re.search(r'\{.*\}', response, re.DOTALL)
         if json_match:
             result = json.loads(json_match.group())
-            if all(k in result for k in ['question', 'type', 'options', 'correct', 'explanation']):
+            if all(k in result for k in ['question', 'options', 'correct', 'explanation']):
                 return result
     except Exception as e:
         pass
     
-    # Fallback based on question type
-    if question_type == "truefalse":
-        return {
-            "question": question_text,
-            "type": "truefalse",
-            "options": ["A) True", "B) False"],
-            "correct": "A",
-            "explanation": "Review the chapter to verify this statement."
-        }
-    elif question_type == "fillblank":
-        return {
-            "question": question_text.replace('_____', '__________'),
-            "type": "fillblank",
-            "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
-            "correct": "A",
-            "explanation": "Review the chapter for the correct term."
-        }
-    else:
-        return {
-            "question": question_text,
-            "type": "mcq",
-            "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
-            "correct": "A",
-            "explanation": "Review your study materials for the correct answer."
-        }
+    # Fallback
+    return {
+        "question": question_text,
+        "options": ["A) Review your notes", "B) Check the textbook", "C) Ask your teacher", "D) All of the above"],
+        "correct": "D",
+        "explanation": "When in doubt, review your study materials or ask for help.",
+        "type": "mcq"
+    }
 
 def extract_questions_from_pdf(file_url: str) -> list:
-    """Extract questions from PDF"""
+    """Extract questions from PDF using multiple methods"""
     text = github_storage.extract_text_from_pdf(file_url)
-    questions = []
-    
     if text:
-        lines = text.split('\n')
-        for line in lines:
-            line = line.strip()
-            # Look for numbered questions
-            if re.match(r'^(\d+[\.\)]|Q\d+\.)', line, re.IGNORECASE) and len(line) > 15:
-                clean_question = re.sub(r'^(\d+[\.\)]|Q\d+\.)\s*', '', line, flags=re.IGNORECASE)
-                if clean_question and len(clean_question) > 10:
-                    questions.append(clean_question[:200])  # Limit length
-    
-    return questions[:20]
-
-def questions_to_smart_questions(questions: list) -> list:
-    """Convert text questions to smart questions with appropriate types"""
-    smart_questions = []
-    for i, q in enumerate(questions):
-        smart_q = generate_question_with_options(q, i)
-        smart_questions.append(smart_q)
-    return smart_questions
+        return extract_questions_smart(text)
+    return []
 
 if not st.session_state.quiz_active and not st.session_state.show_results:
     st.markdown("## 🎯 Choose Your Quiz")
@@ -234,19 +237,24 @@ if not st.session_state.quiz_active and not st.session_state.show_results:
         
         col1, col2 = st.columns(2)
         with col1:
-            num_questions = st.selectbox("Number of questions:", [5, 10, 15], index=1)
+            num_questions = st.selectbox("Number of questions:", [5, 10, 15, 20], index=1)
         
-        if st.button("🚀 Generate Smart Quiz", use_container_width=True, type="primary"):
-            with st.spinner(f"📖 Extracting questions from {selected_pdf}..."):
+        if st.button("🚀 Extract Questions & Generate Quiz", use_container_width=True, type="primary"):
+            with st.spinner(f"📖 Scanning PDF for questions (no numbering needed)..."):
                 extracted_questions = extract_questions_from_pdf(pdf_url)
                 
                 if extracted_questions:
+                    st.success(f"✅ Found {len(extracted_questions)} questions in the PDF")
+                    
                     selected_questions = random.sample(extracted_questions, min(num_questions, len(extracted_questions)))
                     
-                    with st.spinner("🎯 Creating smart questions (Multiple Choice, True/False, Fill in blanks)..."):
-                        smart_questions = questions_to_smart_questions(selected_questions)
+                    with st.spinner("🎯 Creating multiple choice questions..."):
+                        mcq_questions = []
+                        for i, q in enumerate(selected_questions):
+                            mcq = generate_smart_question(q, i)
+                            mcq_questions.append(mcq)
                         
-                        st.session_state.quiz_questions_list = smart_questions
+                        st.session_state.quiz_questions_list = mcq_questions
                         st.session_state.quiz_subject = selected_subject
                         st.session_state.quiz_chapter = selected_pdf
                         st.session_state.quiz_active = True
@@ -256,7 +264,8 @@ if not st.session_state.quiz_active and not st.session_state.show_results:
                         st.session_state.show_results = False
                         st.rerun()
                 else:
-                    st.error("No questions could be extracted. Make sure your PDF has numbered questions (1., 2., etc.)")
+                    st.error("No questions could be extracted from the PDF. Try a PDF with clear question sentences.")
+                    st.info("💡 Tip: Questions should end with question marks (?) or start with words like 'What', 'Why', 'How'")
     else:
         st.info(f"📁 No PDF files found in ASSIGNMENTS/{subject_folder}/")
 
@@ -267,29 +276,16 @@ if st.session_state.quiz_active:
     
     if current_idx < len(questions):
         current_q = questions[current_idx]
-        q_type = current_q.get('type', 'mcq')
         
         # Progress bar
         st.progress((current_idx) / len(questions))
         st.caption(f"Question {current_idx + 1} of {len(questions)}")
         
         # Type badge
-        badge_class = {
-            'mcq': 'mcq-badge',
-            'truefalse': 'truefalse-badge',
-            'fillblank': 'fillblank-badge'
-        }.get(q_type, 'mcq-badge')
-        
-        type_name = {
-            'mcq': 'Multiple Choice',
-            'truefalse': 'True or False',
-            'fillblank': 'Fill in the Blanks'
-        }.get(q_type, 'Multiple Choice')
-        
         st.markdown(f"""
         <div class="quiz-container">
             <div style="margin-bottom: 0.5rem;">
-                <span class="question-type-badge {badge_class}">{type_name}</span>
+                <span class="question-type-badge mcq-badge">Multiple Choice</span>
             </div>
             <div class="question-text">
                 📝 {current_q.get('question', 'Question not available')}
@@ -297,45 +293,23 @@ if st.session_state.quiz_active:
         """, unsafe_allow_html=True)
         
         # Get options
-        options = current_q.get('options', [])
-        if not options:
-            if q_type == 'truefalse':
-                options = ["A) True", "B) False"]
-            else:
-                options = ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"]
+        options = current_q.get('options', [
+            "A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"
+        ])
         
         # Store selected answer
-        answer_key = f"smart_answer_{current_idx}"
+        answer_key = f"mcq_answer_{current_idx}"
         if answer_key not in st.session_state:
             st.session_state[answer_key] = None
         
-        # Display based on question type
-        if q_type == 'truefalse':
-            st.markdown("### Choose: True or False")
-            selected_option = st.radio(
-                "Select your answer:",
-                options,
-                key=f"tf_radio_{current_idx}",
-                label_visibility="collapsed",
-                index=None
-            )
-        elif q_type == 'fillblank':
-            st.markdown("### Choose the correct word/phrase to fill the blank:")
-            selected_option = st.radio(
-                "Select your answer:",
-                options,
-                key=f"fb_radio_{current_idx}",
-                label_visibility="collapsed",
-                index=None
-            )
-        else:  # mcq
-            selected_option = st.radio(
-                "Choose the correct answer:",
-                options,
-                key=f"mcq_radio_{current_idx}",
-                label_visibility="collapsed",
-                index=None
-            )
+        # Display radio buttons
+        selected_option = st.radio(
+            "Choose your answer:",
+            options,
+            key=f"radio_{current_idx}",
+            label_visibility="collapsed",
+            index=None
+        )
         
         if selected_option:
             selected_letter = selected_option[0]
@@ -379,7 +353,7 @@ if st.session_state.quiz_active:
                         st.session_state.quiz_scores[quiz_name] = {
                             'score': score,
                             'total': len(questions),
-                            'percentage': (score/len(questions))*100 if len(questions) > 0 else 0,
+                            'percentage': (score/len(questions))*100,
                             'date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             'subject': st.session_state.quiz_subject
                         }
@@ -444,12 +418,9 @@ if st.session_state.show_results:
             if opt.startswith(correct_answer):
                 correct_option_text = opt
         
-        q_type = q.get('type', 'mcq')
-        type_icon = {'mcq': '🔘', 'truefalse': '✓✗', 'fillblank': '___'}.get(q_type, '🔘')
-        
         st.markdown(f"""
         <div style="background: {'#d4edda' if is_correct else '#f8d7da'}; padding: 1rem; border-radius: 10px; margin: 0.5rem 0;">
-            <strong>{type_icon} Q{i+1}:</strong> {q.get('question', 'Question not available')}<br>
+            <strong>🔘 Q{i+1}:</strong> {q.get('question', 'Question not available')}<br>
             <strong>Your answer:</strong> {user_answer}. {user_option_text}<br>
             <strong>Correct answer:</strong> {correct_answer}. {correct_option_text}<br>
             <strong>💡 Explanation:</strong> {q.get('explanation', 'Review your study materials.')}
@@ -491,6 +462,6 @@ with col2:
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; padding: 1rem; color: #666;">
-    💪 Smart questions help you prepare better for tests! Multiple Choice, True/False, and Fill in the Blanks! 🌟
+    💪 Questions are automatically detected - no numbering needed! Look for sentences with question marks or starting with What/Why/How! 🌟
 </div>
 """, unsafe_allow_html=True)
