@@ -250,6 +250,8 @@ def init_session_state():
     for key, default_value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = default_value
+
+    st.session_state['user_name'] = os.getenv("STUDENT_NAME", "Mayra")
     
     # Update daily streak
     if st.session_state.last_active:
