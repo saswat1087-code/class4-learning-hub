@@ -226,4 +226,74 @@ if st.session_state.show_results:
         <div class="score-card">
             <div>🏆 EXCELLENT! 🏆</div>
             <div class="score-number">{score}/{total}</div>
-            <div>{percentage:.
+            <div>{percentage:.0f}% - Great job! ⭐</div>
+        </div>
+        """, unsafe_allow_html=True)
+    elif percentage >= 50:
+        st.markdown(f"""
+        <div class="score-card">
+            <div>🌟 GOOD WORK! 🌟</div>
+            <div class="score-number">{score}/{total}</div>
+            <div>{percentage:.0f}% - Keep practicing! 📚</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="score-card">
+            <div>💪 KEEP GOING! 💪</div>
+            <div class="score-number">{score}/{total}</div>
+            <div>{percentage:.0f}% - Review the chapter and try again!</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("### 📝 Your Answers")
+    for i, q in enumerate(questions):
+        answer = answers[i] if i < len(answers) else "Not answered"
+        st.markdown(f"""
+        <div style="background: #f8f9fa; padding: 0.8rem; border-radius: 10px; margin: 0.5rem 0;">
+            <strong>Q{i+1}:</strong> {q['question']}<br>
+            <strong>Your answer:</strong> {answer[:200]}{'...' if len(answer) > 200 else ''}
+        </div>
+        """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🔄 Take Another Quiz", use_container_width=True, type="primary"):
+            st.session_state.quiz_active = False
+            st.session_state.show_results = False
+            st.session_state.user_answers = []
+            st.session_state.quiz_questions_list = []
+            st.rerun()
+    
+    with col2:
+        if st.button("🏠 Back to Home", use_container_width=True):
+            st.session_state.quiz_active = False
+            st.session_state.show_results = False
+            st.switch_page("app.py")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    if percentage >= 70:
+        st.balloons()
+
+# Statistics
+st.markdown("---")
+st.markdown("## 🏆 Your Quiz Statistics")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    total_quizzes = len(st.session_state.quiz_scores)
+    st.metric("Total Quizzes Taken", total_quizzes)
+
+with col2:
+    st.metric("Points Earned", st.session_state.points_earned)
+
+# Footer
+st.markdown("---")
+st.markdown("""
+<div style="text-align: center; padding: 1rem; color: #666;">
+    💪 Practice makes progress! Answer questions from your assignments to prepare for tests! 🌟
+</div>
+""", unsafe_allow_html=True)
