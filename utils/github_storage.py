@@ -1,6 +1,5 @@
 """
-GitHub Storage Helper - Complete Version for Class 4 Learning Hub
-Contains all subjects and chapters from the syllabus
+GitHub Storage Helper - Corrected Paths for Computer Science Chapters
 """
 
 import streamlit as st
@@ -10,7 +9,7 @@ from typing import Dict, List
 
 class GitHubStorage:
     def __init__(self):
-        # Define all subjects and chapters with DIRECT URLs to content.md
+        # Define all subjects and chapters with CORRECTED URLs
         self.subjects_data = {
             "COMPUTER": {
                 "display_name": "Computer Science",
@@ -149,35 +148,6 @@ class GitHubStorage:
                         "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/SOCIAL%20STUDIES/Chapter%205%20-%20We%20Depend%20on%20Each%20Other/content.md"
                     }
                 }
-            },
-            "HINDI": {
-                "display_name": "Hindi (2nd Language)",
-                "icon": "🇮🇳",
-                "color": "#FF5722",
-                "chapters": {
-                    "Chapter 1 - झंडा ऊँचा रहे हमारा": {
-                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/HINDI/Chapter%201%20-%20%E0%A4%9D%E0%A4%82%E0%A4%A1%E0%A4%BE%20%E0%A4%8A%E0%A4%81%E0%A4%9A%E0%A4%BE%20%E0%A4%B0%E0%A4%B9%E0%A5%87%20%E0%A4%B9%E0%A4%AE%E0%A4%BE%E0%A4%B0%E0%A4%BE/content.md"
-                    },
-                    "Chapter 2 - एकता में बल": {
-                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/HINDI/Chapter%202%20-%20%E0%A4%8F%E0%A4%95%E0%A4%A4%E0%A4%BE%20%E0%A4%AE%E0%A5%87%E0%A4%82%20%E0%A4%AC%E0%A4%B2/content.md"
-                    }
-                }
-            },
-            "BENGALI": {
-                "display_name": "Bengali (2nd Language)",
-                "icon": "🇧🇩",
-                "color": "#FF9800",
-                "chapters": {
-                    "Chapter 1 - ইদুরের ভাজ": {
-                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/BENGALI/Chapter%201%20-%20%E0%A6%87%E0%A6%A6%E0%A7%81%E0%A6%B0%E0%A7%87%E0%A6%B0%20%E0%A6%AD%E0%A6%BE%E0%A6%9C/content.md"
-                    },
-                    "Chapter 2 - আমরা ঘোসের ছোট ছোট ফুল": {
-                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/BENGALI/Chapter%202%20-%20%E0%A6%86%E0%A6%AE%E0%A6%B0%E0%A6%BE%20%E0%A6%98%E0%A7%8B%E0%A6%B8%E0%A7%87%E0%A6%B0%20%E0%A6%9B%E0%A7%8B%E0%A6%9F%20%E0%A6%9B%E0%A7%8B%E0%A6%9F%20%E0%A6%AB%E0%A7%81%E0%A6%B2/content.md"
-                    },
-                    "Chapter 3 - খাকেনের বন্ধু": {
-                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/BENGALI/Chapter%203%20-%20%E0%A6%96%E0%A6%BE%E0%A6%95%E0%A7%87%E0%A6%A8%E0%A7%87%E0%A6%B0%20%E0%A6%AC%E0%A6%A8%E0%A7%8D%E0%A6%A7%E0%A7%81/content.md"
-                    }
-                }
             }
         }
         
@@ -242,23 +212,18 @@ class GitHubStorage:
         return self.get_empty_chapter(chapter_title, "No URL configured")
     
     def get_files_in_folder(self, folder_path: str) -> List[Dict]:
-        """Get files from a folder (for assignments, projects)"""
         return []
     
     def get_all_assignments(self) -> Dict[str, List[Dict]]:
-        """Get all assignments grouped by subject"""
         return {}
     
     def get_revision_papers(self) -> List[Dict]:
-        """Get revision papers"""
         return []
     
     def get_projects(self) -> List[Dict]:
-        """Get projects"""
         return []
     
     def get_total_resources_count(self) -> Dict:
-        """Get resource counts"""
         total_chapters = 0
         for subject in self.subjects_data.values():
             total_chapters += len(subject.get('chapters', {}))
@@ -272,7 +237,6 @@ class GitHubStorage:
         }
     
     def get_file_type(self, filename: str) -> str:
-        """Get file type from extension"""
         ext = filename.split('.')[-1].lower()
         types = {
             'pdf': 'pdf', 'doc': 'word', 'docx': 'word',
@@ -353,14 +317,11 @@ class GitHubStorage:
         }
     
     def clear_cache(self):
-        """Clear the cache"""
         self.cache = {}
 
 # Create singleton instance
 @st.cache_resource
 def get_github_storage():
-    """Get or create the GitHub storage instance"""
     return GitHubStorage()
 
-# Global instance
 github_storage = get_github_storage()
