@@ -1,10 +1,12 @@
 """
-Practice & Tests Page - Multiple Choice Questions from Syllabus Chapters
+Practice & Tests Page - Smart Question Extraction (No Numbering Needed)
+Detects questions using AI and patterns
 """
 
 import streamlit as st
 import random
 import re
+import json
 from datetime import datetime
 from utils.data_manager import data_manager
 from utils import get_gemini_helper
@@ -29,10 +31,16 @@ if 'show_results' not in st.session_state:
     st.session_state.show_results = False
 if 'quiz_score' not in st.session_state:
     st.session_state.quiz_score = 0
-if 'quiz_scores' not in st.session_state:
-    st.session_state.quiz_scores = {}
-if 'points_earned' not in st.session_state:
-    st.session_state.points_earned = 0
+
+# Subject to folder mapping
+SUBJECT_FOLDER_MAP = {
+    "Computer Science": "COMPUTER",
+    "English Language": "ENGLISH LANGUAGE",
+    "English Literature": "ENGLISH LITERATURE",
+    "Mathematics": "MATHEMATICS",
+    "Science": "SCIENCE",
+    "Social Studies": "SOCIAL STUDIES"
+}
 
 st.markdown("""
 <style>
@@ -65,114 +73,201 @@ st.markdown("""
     font-weight: bold;
     margin: 0.5rem 0;
 }
+.question-type-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+.mcq-badge { background: #2196F3; color: white; }
+.truefalse-badge { background: #4CAF50; color: white; }
+.fillblank-badge { background: #FF9800; color: white; }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
 <div style="text-align: center; margin-bottom: 2rem;">
     <h1>🏆 Practice & Assessment Zone</h1>
-    <p>Test your knowledge with multiple choice questions! 🌟</p>
+    <p>Smart questions extracted from your PDFs - No numbering needed! 📄</p>
 </div>
 """, unsafe_allow_html=True)
 
-# Get subjects
-subjects = github_storage.get_subjects()
+def extract_questions_smart(text: str) -> list:
+    """Extract questions intelligently without relying on numbering"""
+    questions = []
+    
+    if not text:
+        return questions
+    
+    lines = text.split('\n')
+    
+    # Method 1: Look for sentences ending with question marks
+    for line in lines:
+        line = line.strip()
+        # Check if line ends with question mark and has reasonable length
+        if line.endswith('?') and 20 < len(line) < 300:
+            # Clean up the question
+            clean_q = re.sub(r'^\d+[\.\)]\s*', '', line)  # Remove numbering if present
+            if clean_q and clean_q not in questions:
+                questions.append(clean_q)
+    
+    # Method 2: Look for lines that start with question words
+    question_words = ['what', 'why', 'how', 'when', 'where', 'which', 'who', 'whom', 
+                      'define', 'explain', 'describe', 'list', 'name', 'state', 
+                      'differentiate', 'compare', 'distinguish']
+    
+    for line in lines:
+        line = line.strip()
+        line_lower = line.lower()
+        # Check if line starts with question word and has reasonable length
+        if any(line_lower.startswith(qw) for qw in question_words):
+            if 20 < len(line) < 300 and line not in questions:
+                questions.append(line)
+    
+    # Method 3: Look for lines that are likely questions (capital start, meaningful content)
+    for line in lines:
+        line = line.strip()
+        # Check if line has capital letter at start and contains question-like patterns
+        if (line and line[0].isupper() and 
+            len(line) > 25 and 
+            any(word in line.lower() for word in ['?', 'explain', 'describe', 'define', 'what is', 'how does'])):
+            if line not in questions and not line.endswith('.'):
+                questions.append(line)
+    
+    # Method 4: Use AI to identify questions if traditional methods fail
+    if len(questions) < 3 and len(text) > 200:
+        try:
+            gemini_helper = get_gemini_helper()
+            prompt = f"""
+            Extract all the questions from this text. Return ONLY the questions, one per line.
+            Do not include any other text or numbering.
+            
+            Text:
+            {text[:2000]}
+            """
+            ai_questions = gemini_helper.generate_response(prompt, temperature=0.3)
+            if ai_questions:
+                for line in ai_questions.split('\n'):
+                    line = line.strip()
+                    if line and len(line) > 15 and '?' in line:
+                        questions.append(line)
+        except:
+            pass
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_questions = []
+    for q in questions:
+        if q not in seen:
+            seen.add(q)
+            unique_questions.append(q)
+    
+    return unique_questions[:25]  # Limit to 25 questions
 
-def generate_mcq_from_content(chapter_content: str, chapter_title: str) -> list:
-    """Generate multiple choice questions from chapter content"""
-    mcqs = []
+def generate_smart_question(question_text: str, index: int) -> dict:
+    """Generate appropriate question with options using AI"""
     
-    # Use AI to generate questions
     prompt = f"""
-    Based on this Class 4 chapter content about "{chapter_title}":
+    Convert this question into an interactive multiple choice question for Class 4 students:
     
-    {chapter_content[:1500]}
+    Original question: "{question_text}"
     
-    Generate 5 multiple choice questions for students. Each question should have:
-    - A clear question
-    - 4 options (A, B, C, D)
-    - The correct answer letter
-    - A simple explanation
+    Generate a response in JSON format with:
+    1. "question": A clear, well-formatted version of the question
+    2. "options": 4 options (A, B, C, D) with one correct answer
+    3. "correct": The letter of the correct option (A, B, C, or D)
+    4. "explanation": A simple explanation for a 9-year-old
+    5. "type": "mcq"
     
-    Format as JSON array:
-    [
-        {{
-            "question": "What is...?",
-            "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
-            "correct": "A",
-            "explanation": "Explanation here"
-        }}
-    ]
+    Example:
+    {{
+        "question": "What is the main function of RAM in a computer?",
+        "options": ["A) Permanent storage", "B) Temporary storage", "C) Processing data", "D) Displaying images"],
+        "correct": "B",
+        "explanation": "RAM is temporary memory that stores data while the computer is running.",
+        "type": "mcq"
+    }}
+    
+    Return ONLY valid JSON, no other text.
     """
     
     try:
         gemini_helper = get_gemini_helper()
         response = gemini_helper.generate_response(prompt, temperature=0.7)
-        json_match = re.search(r'\[.*\]', response, re.DOTALL)
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
         if json_match:
-            import json
-            mcqs = json.loads(json_match.group())
-    except:
+            result = json.loads(json_match.group())
+            if all(k in result for k in ['question', 'options', 'correct', 'explanation']):
+                return result
+    except Exception as e:
         pass
     
-    return mcqs
+    # Fallback
+    return {
+        "question": question_text,
+        "options": ["A) Review your notes", "B) Check the textbook", "C) Ask your teacher", "D) All of the above"],
+        "correct": "D",
+        "explanation": "When in doubt, review your study materials or ask for help.",
+        "type": "mcq"
+    }
+
+def extract_questions_from_pdf(file_url: str) -> list:
+    """Extract questions from PDF using multiple methods"""
+    text = github_storage.extract_text_from_pdf(file_url)
+    if text:
+        return extract_questions_smart(text)
+    return []
 
 if not st.session_state.quiz_active and not st.session_state.show_results:
     st.markdown("## 🎯 Choose Your Quiz")
     
-    if subjects:
-        # Subject selection
-        subject_names = [s['name'] for s in subjects]
-        selected_subject = st.selectbox("Select Subject:", subject_names)
+    selected_subject = st.selectbox("Select Subject:", list(SUBJECT_FOLDER_MAP.keys()))
+    subject_folder = SUBJECT_FOLDER_MAP[selected_subject]
+    
+    assignments_path = f"ASSIGNMENTS/{subject_folder}"
+    pdf_files = [f for f in github_storage.get_files_in_folder(assignments_path) if f['type'] == 'pdf']
+    
+    if pdf_files:
+        st.success(f"📄 Found {len(pdf_files)} assignment PDF(s) for {selected_subject}")
         
-        subject_data = next((s for s in subjects if s['name'] == selected_subject), None)
+        selected_pdf = st.selectbox("Select Assignment PDF:", [f['name'] for f in pdf_files])
+        pdf_url = next(f['url'] for f in pdf_files if f['name'] == selected_pdf)
         
-        if subject_data:
-            # Get chapters for selected subject
-            chapters = github_storage.get_chapters(subject_data['folder_name'])
-            
-            if chapters:
-                chapter_names = [c['title'] for c in chapters]
-                selected_chapter = st.selectbox("Select Chapter:", chapter_names)
+        col1, col2 = st.columns(2)
+        with col1:
+            num_questions = st.selectbox("Number of questions:", [5, 10, 15, 20], index=1)
+        
+        if st.button("🚀 Extract Questions & Generate Quiz", use_container_width=True, type="primary"):
+            with st.spinner(f"📖 Scanning PDF for questions (no numbering needed)..."):
+                extracted_questions = extract_questions_from_pdf(pdf_url)
                 
-                col1, col2 = st.columns(2)
-                with col1:
-                    num_questions = st.selectbox("Number of questions:", [3, 5, 10], index=1)
-                
-                if st.button("🚀 Start Quiz", use_container_width=True, type="primary"):
-                    chapter_data = next((c for c in chapters if c['title'] == selected_chapter), None)
-                    if chapter_data:
-                        content = github_storage.get_chapter_content(subject_data['folder_name'], chapter_data['id'])
-                        chapter_content = content.get('content', '')
+                if extracted_questions:
+                    st.success(f"✅ Found {len(extracted_questions)} questions in the PDF")
+                    
+                    selected_questions = random.sample(extracted_questions, min(num_questions, len(extracted_questions)))
+                    
+                    with st.spinner("🎯 Creating multiple choice questions..."):
+                        mcq_questions = []
+                        for i, q in enumerate(selected_questions):
+                            mcq = generate_smart_question(q, i)
+                            mcq_questions.append(mcq)
                         
-                        if chapter_content:
-                            with st.spinner("Generating questions..."):
-                                questions = generate_mcq_from_content(chapter_content, selected_chapter)
-                                if questions:
-                                    selected_questions = random.sample(questions, min(num_questions, len(questions)))
-                                else:
-                                    # Fallback questions
-                                    selected_questions = [
-                                        {"question": f"What is the main topic of {selected_chapter}?", 
-                                         "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
-                                         "correct": "A", "explanation": "Review the chapter to find the answer."}
-                                    ] * num_questions
-                                
-                                st.session_state.quiz_questions_list = selected_questions[:num_questions]
-                                st.session_state.quiz_subject = selected_subject
-                                st.session_state.quiz_chapter = selected_chapter
-                                st.session_state.quiz_active = True
-                                st.session_state.current_question_index = 0
-                                st.session_state.user_answers = []
-                                st.session_state.quiz_score = 0
-                                st.session_state.show_results = False
-                                st.rerun()
-                        else:
-                            st.warning("No content available for this chapter yet.")
-            else:
-                st.info("No chapters available for this subject yet.")
+                        st.session_state.quiz_questions_list = mcq_questions
+                        st.session_state.quiz_subject = selected_subject
+                        st.session_state.quiz_chapter = selected_pdf
+                        st.session_state.quiz_active = True
+                        st.session_state.current_question_index = 0
+                        st.session_state.user_answers = []
+                        st.session_state.quiz_score = 0
+                        st.session_state.show_results = False
+                        st.rerun()
+                else:
+                    st.error("No questions could be extracted from the PDF. Try a PDF with clear question sentences.")
+                    st.info("💡 Tip: Questions should end with question marks (?) or start with words like 'What', 'Why', 'How'")
     else:
-        st.info("Loading subjects...")
+        st.info(f"📁 No PDF files found in ASSIGNMENTS/{subject_folder}/")
 
 # Active Quiz Mode
 if st.session_state.quiz_active:
@@ -182,24 +277,32 @@ if st.session_state.quiz_active:
     if current_idx < len(questions):
         current_q = questions[current_idx]
         
+        # Progress bar
         st.progress((current_idx) / len(questions))
         st.caption(f"Question {current_idx + 1} of {len(questions)}")
         
+        # Type badge
         st.markdown(f"""
         <div class="quiz-container">
+            <div style="margin-bottom: 0.5rem;">
+                <span class="question-type-badge mcq-badge">Multiple Choice</span>
+            </div>
             <div class="question-text">
                 📝 {current_q.get('question', 'Question not available')}
             </div>
         """, unsafe_allow_html=True)
         
+        # Get options
         options = current_q.get('options', [
             "A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"
         ])
         
+        # Store selected answer
         answer_key = f"mcq_answer_{current_idx}"
         if answer_key not in st.session_state:
             st.session_state[answer_key] = None
         
+        # Display radio buttons
         selected_option = st.radio(
             "Choose your answer:",
             options,
@@ -233,6 +336,7 @@ if st.session_state.quiz_active:
                         else:
                             st.session_state.user_answers[current_idx] = st.session_state[answer_key]
                         
+                        # Calculate score
                         score = 0
                         for i, q in enumerate(questions):
                             if i < len(st.session_state.user_answers) and st.session_state.user_answers[i] == q.get('correct', 'A'):
@@ -243,7 +347,7 @@ if st.session_state.quiz_active:
                         st.session_state.show_results = True
                         
                         points_earned = score * 10
-                        st.session_state.points_earned += points_earned
+                        data_manager.award_points(points_earned, f"scored {score}/{len(questions)} on {st.session_state.quiz_subject} quiz!", category="quiz")
                         
                         quiz_name = f"{st.session_state.quiz_subject}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
                         st.session_state.quiz_scores[quiz_name] = {
@@ -316,7 +420,7 @@ if st.session_state.show_results:
         
         st.markdown(f"""
         <div style="background: {'#d4edda' if is_correct else '#f8d7da'}; padding: 1rem; border-radius: 10px; margin: 0.5rem 0;">
-            <strong>Q{i+1}:</strong> {q.get('question', 'Question not available')}<br>
+            <strong>🔘 Q{i+1}:</strong> {q.get('question', 'Question not available')}<br>
             <strong>Your answer:</strong> {user_answer}. {user_option_text}<br>
             <strong>Correct answer:</strong> {correct_answer}. {correct_option_text}<br>
             <strong>💡 Explanation:</strong> {q.get('explanation', 'Review your study materials.')}
@@ -331,8 +435,6 @@ if st.session_state.show_results:
             st.session_state.show_results = False
             st.session_state.user_answers = []
             st.session_state.quiz_questions_list = []
-            st.session_state.current_question_index = 0
-            st.session_state.quiz_score = 0
             st.rerun()
     
     with col2:
@@ -360,6 +462,6 @@ with col2:
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; padding: 1rem; color: #666;">
-    💪 Practice makes progress! Take quizzes to test your knowledge! 🌟
+    💪 Questions are automatically detected - no numbering needed! Look for sentences with question marks or starting with What/Why/How! 🌟
 </div>
 """, unsafe_allow_html=True)
