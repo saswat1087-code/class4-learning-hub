@@ -1,240 +1,365 @@
 """
-GitHub Storage Helper - Auto-Discover Files (No API Required)
-Uses GitHub API with proper authentication to list files
+Practice & Tests Page - Multiple Choice Questions from Syllabus Chapters
 """
 
 import streamlit as st
-import requests
+import random
 import re
-import urllib.parse
-from typing import Dict, List
+from datetime import datetime
+from utils.data_manager import data_manager
+from utils import get_gemini_helper
+from utils.github_storage import github_storage
 
-class GitHubStorage:
-    def __init__(self):
-        self.repo_owner = "saswat1087-code"
-        self.repo_name = "class4-learning-hub"
-        self.branch = "main"
-        
-        self.content_path = "data/CLASS 4 (2026-27)/FIRST TERM"
-        self.encoded_path = urllib.parse.quote(self.content_path)
-        
-        self.raw_base = f"https://raw.githubusercontent.com/{self.repo_owner}/{self.repo_name}/{self.branch}/{self.encoded_path}"
-        
-        # GitHub API with authentication (using token if available)
-        self.api_base = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/contents/{self.encoded_path}"
-        
-        self.cache = {}
-        self.file_cache = {}
-        
-        # Try to get GitHub token from secrets
-        self.github_token = None
-        try:
-            self.github_token = st.secrets.get("GITHUB_TOKEN", None)
-        except:
-            pass
+st.set_page_config(
+    page_title="Practice & Tests | Class 4 Learning Hub",
+    page_icon="🏆",
+    layout="wide"
+)
+
+# Initialize session state
+if 'quiz_active' not in st.session_state:
+    st.session_state.quiz_active = False
+if 'current_question_index' not in st.session_state:
+    st.session_state.current_question_index = 0
+if 'user_answers' not in st.session_state:
+    st.session_state.user_answers = []
+if 'quiz_questions_list' not in st.session_state:
+    st.session_state.quiz_questions_list = []
+if 'show_results' not in st.session_state:
+    st.session_state.show_results = False
+if 'quiz_score' not in st.session_state:
+    st.session_state.quiz_score = 0
+if 'quiz_scores' not in st.session_state:
+    st.session_state.quiz_scores = {}
+if 'points_earned' not in st.session_state:
+    st.session_state.points_earned = 0
+
+st.markdown("""
+<style>
+.quiz-container {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin: 1rem 0;
+}
+.question-text {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f0f2f6;
+    border-radius: 10px;
+}
+.score-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 15px;
+    text-align: center;
+    margin: 1rem 0;
+}
+.score-number {
+    font-size: 3rem;
+    font-weight: bold;
+    margin: 0.5rem 0;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<div style="text-align: center; margin-bottom: 2rem;">
+    <h1>🏆 Practice & Assessment Zone</h1>
+    <p>Test your knowledge with multiple choice questions! 🌟</p>
+</div>
+""", unsafe_allow_html=True)
+
+# Get subjects
+subjects = github_storage.get_subjects()
+
+def generate_mcq_from_content(chapter_content: str, chapter_title: str) -> list:
+    """Generate multiple choice questions from chapter content"""
+    mcqs = []
     
-    def _get_headers(self):
-        """Get headers for GitHub API requests"""
-        headers = {
-            'User-Agent': 'Class4LearningHub/2.0',
-            'Accept': 'application/vnd.github.v3+json'
-        }
-        if self.github_token:
-            headers['Authorization'] = f'token {self.github_token}'
-        return headers
+    # Use AI to generate questions
+    prompt = f"""
+    Based on this Class 4 chapter content about "{chapter_title}":
     
-    def get_files_in_folder(self, folder_path: str) -> List[Dict]:
-        """Automatically discover all files in a folder using GitHub API"""
+    {chapter_content[:1500]}
+    
+    Generate 5 multiple choice questions for students. Each question should have:
+    - A clear question
+    - 4 options (A, B, C, D)
+    - The correct answer letter
+    - A simple explanation
+    
+    Format as JSON array:
+    [
+        {{
+            "question": "What is...?",
+            "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+            "correct": "A",
+            "explanation": "Explanation here"
+        }}
+    ]
+    """
+    
+    try:
+        gemini_helper = get_gemini_helper()
+        response = gemini_helper.generate_response(prompt, temperature=0.7)
+        json_match = re.search(r'\[.*\]', response, re.DOTALL)
+        if json_match:
+            import json
+            mcqs = json.loads(json_match.group())
+    except:
+        pass
+    
+    return mcqs
+
+if not st.session_state.quiz_active and not st.session_state.show_results:
+    st.markdown("## 🎯 Choose Your Quiz")
+    
+    if subjects:
+        # Subject selection
+        subject_names = [s['name'] for s in subjects]
+        selected_subject = st.selectbox("Select Subject:", subject_names)
         
-        # Check cache first
-        if folder_path in self.file_cache:
-            return self.file_cache[folder_path]
+        subject_data = next((s for s in subjects if s['name'] == selected_subject), None)
         
-        files = []
-        
-        # Build the API URL for the folder
-        encoded_folder = urllib.parse.quote(folder_path)
-        api_url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/contents/{self.encoded_path}/{encoded_folder}"
-        
-        try:
-            response = requests.get(api_url, headers=self._get_headers(), timeout=15)
+        if subject_data:
+            # Get chapters for selected subject
+            chapters = github_storage.get_chapters(subject_data['folder_name'])
             
-            if response.status_code == 200:
-                items = response.json()
-                for item in items:
-                    if item['type'] == 'file':
-                        filename = item['name']
-                        # Only include PDF files
-                        if filename.lower().endswith('.pdf'):
-                            files.append({
-                                'name': filename,
-                                'url': item['download_url'],
-                                'size': item.get('size', 0),
-                                'type': 'pdf'
-                            })
-                    elif item['type'] == 'dir':
-                        # Recursively get files from subdirectories if needed
-                        sub_files = self.get_files_in_folder(f"{folder_path}/{item['name']}")
-                        files.extend(sub_files)
+            if chapters:
+                chapter_names = [c['title'] for c in chapters]
+                selected_chapter = st.selectbox("Select Chapter:", chapter_names)
                 
-                # Cache the results
-                self.file_cache[folder_path] = files
-                return files
+                col1, col2 = st.columns(2)
+                with col1:
+                    num_questions = st.selectbox("Number of questions:", [3, 5, 10], index=1)
                 
-            elif response.status_code == 403:
-                # Rate limit or permission issue - use fallback
-                st.warning(f"GitHub API rate limit. Using fallback for {folder_path}")
-                return self._get_fallback_files(folder_path)
-                
-            elif response.status_code == 404:
-                # Folder doesn't exist
-                return []
-                
-        except Exception as e:
-            st.error(f"Error accessing {folder_path}: {str(e)[:100]}")
-        
-        return []
-    
-    def _get_fallback_files(self, folder_path: str) -> List[Dict]:
-        """Fallback method to get files using raw GitHub (no API)"""
-        # This is a best-effort fallback - you'll need to list files manually
-        # or use the add_file method
-        return []
-    
-    def discover_all_files(self) -> Dict:
-        """Discover all PDF files in all relevant folders"""
-        all_files = {
-            "ASSIGNMENTS/COMPUTER": [],
-            "ASSIGNMENTS/ENGLISH LANGUAGE": [],
-            "ASSIGNMENTS/ENGLISH LITERATURE": [],
-            "ASSIGNMENTS/MATHEMATICS": [],
-            "ASSIGNMENTS/SCIENCE": [],
-            "ASSIGNMENTS/SOCIAL STUDIES": [],
-            "FIRST REVIEW REVISION PAPERS": [],
-            "PROJECT": []
-        }
-        
-        for folder in all_files.keys():
-            files = self.get_files_in_folder(folder)
-            all_files[folder] = files
-        
-        return all_files
-    
-    def extract_text_from_pdf(self, file_url: str) -> str:
-        """Extract text from PDF file"""
-        try:
-            response = requests.get(file_url, timeout=30)
-            if response.status_code == 200:
-                import io
-                import PyPDF2
-                
-                pdf_file = io.BytesIO(response.content)
-                pdf_reader = PyPDF2.PdfReader(pdf_file)
-                
-                text = ""
-                for page in pdf_reader.pages:
-                    page_text = page.extract_text()
-                    if page_text:
-                        text += page_text + "\n"
-                
-                return text
-        except ImportError:
-            pass
-        except Exception as e:
-            pass
-        
-        return ""
-    
-    def extract_questions_from_text(self, text: str) -> list:
-        """Extract questions from extracted PDF text"""
-        questions = []
-        
-        if not text:
-            return questions
-        
-        lines = text.split('\n')
-        
-        # Pattern for numbered questions
-        patterns = [
-            r'^(\d+)[\.\)]\s+(.+)$',
-            r'^Q\.?\s*(\d+)[\.\)]?\s+(.+)$',
-        ]
-        
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-            
-            for pattern in patterns:
-                match = re.match(pattern, line, re.IGNORECASE)
-                if match:
-                    question_text = match.group(2) if len(match.groups()) > 1 else line
-                    if question_text and len(question_text) > 10:
-                        questions.append(question_text)
-                    break
-        
-        # Look for lines with question marks
-        for line in lines:
-            line = line.strip()
-            if line.endswith('?') and 20 < len(line) < 300 and line not in questions:
-                clean_q = re.sub(r'^\d+[\.\)]\s*', '', line)
-                if clean_q:
-                    questions.append(clean_q)
-        
-        return questions[:30]
-    
-    def get_questions_from_pdf(self, file_url: str) -> list:
-        """Get questions from a PDF file"""
-        text = self.extract_text_from_pdf(file_url)
-        if text:
-            return self.extract_questions_from_text(text)
-        return []
-    
-    def get_file_type(self, filename: str) -> str:
-        ext = filename.split('.')[-1].lower()
-        types = {'pdf': 'pdf', 'doc': 'word', 'docx': 'word', 'jpg': 'image', 'png': 'image'}
-        return types.get(ext, 'unknown')
-    
-    def get_subjects(self) -> List[Dict]:
-        return [
-            {'id': 'computer', 'name': 'Computer Science', 'folder_name': 'COMPUTER', 'icon': '💻', 'color': '#4A90E2', 'path': 'COMPUTER'},
-            {'id': 'english-language', 'name': 'English Language', 'folder_name': 'ENGLISH LANGUAGE', 'icon': '✍️', 'color': '#9C27B0', 'path': 'ENGLISH LANGUAGE'},
-            {'id': 'english-literature', 'name': 'English Literature', 'folder_name': 'ENGLISH LITERATURE', 'icon': '📖', 'color': '#9C27B0', 'path': 'ENGLISH LITERATURE'},
-            {'id': 'mathematics', 'name': 'Mathematics', 'folder_name': 'MATHEMATICS', 'icon': '🧮', 'color': '#FF9800', 'path': 'MATHEMATICS'},
-            {'id': 'science', 'name': 'Science', 'folder_name': 'SCIENCE', 'icon': '🔬', 'color': '#4CAF50', 'path': 'SCIENCE'},
-            {'id': 'social-studies', 'name': 'Social Studies', 'folder_name': 'SOCIAL STUDIES', 'icon': '🌍', 'color': '#F44336', 'path': 'SOCIAL STUDIES'}
-        ]
-    
-    def get_chapters(self, subject_path: str) -> List[Dict]:
-        return []
-    
-    def get_chapter_content(self, subject_path: str, chapter_path: str) -> Dict:
-        return {'content': '', 'key_points': [], 'vocabulary': [], 'fun_fact': '', 'practice_questions': []}
-    
-    def get_revision_papers(self) -> List[Dict]:
-        return self.get_files_in_folder("FIRST REVIEW REVISION PAPERS")
-    
-    def get_projects(self) -> List[Dict]:
-        return self.get_files_in_folder("PROJECT")
-    
-    def get_total_resources_count(self) -> Dict:
-        all_files = self.discover_all_files()
-        total_assignments = 0
-        for folder, files in all_files.items():
-            if folder.startswith("ASSIGNMENTS/"):
-                total_assignments += len(files)
-        
-        return {
-            'subjects': 6,
-            'chapters': 0,
-            'assignments': total_assignments,
-            'revision_papers': len(all_files.get("FIRST REVIEW REVISION PAPERS", [])),
-            'projects': len(all_files.get("PROJECT", []))
-        }
+                if st.button("🚀 Start Quiz", use_container_width=True, type="primary"):
+                    chapter_data = next((c for c in chapters if c['title'] == selected_chapter), None)
+                    if chapter_data:
+                        content = github_storage.get_chapter_content(subject_data['folder_name'], chapter_data['id'])
+                        chapter_content = content.get('content', '')
+                        
+                        if chapter_content:
+                            with st.spinner("Generating questions..."):
+                                questions = generate_mcq_from_content(chapter_content, selected_chapter)
+                                if questions:
+                                    selected_questions = random.sample(questions, min(num_questions, len(questions)))
+                                else:
+                                    # Fallback questions
+                                    selected_questions = [
+                                        {"question": f"What is the main topic of {selected_chapter}?", 
+                                         "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+                                         "correct": "A", "explanation": "Review the chapter to find the answer."}
+                                    ] * num_questions
+                                
+                                st.session_state.quiz_questions_list = selected_questions[:num_questions]
+                                st.session_state.quiz_subject = selected_subject
+                                st.session_state.quiz_chapter = selected_chapter
+                                st.session_state.quiz_active = True
+                                st.session_state.current_question_index = 0
+                                st.session_state.user_answers = []
+                                st.session_state.quiz_score = 0
+                                st.session_state.show_results = False
+                                st.rerun()
+                        else:
+                            st.warning("No content available for this chapter yet.")
+            else:
+                st.info("No chapters available for this subject yet.")
+    else:
+        st.info("Loading subjects...")
 
-# Create singleton instance
-@st.cache_resource
-def get_github_storage():
-    return GitHubStorage()
+# Active Quiz Mode
+if st.session_state.quiz_active:
+    questions = st.session_state.quiz_questions_list
+    current_idx = st.session_state.current_question_index
+    
+    if current_idx < len(questions):
+        current_q = questions[current_idx]
+        
+        st.progress((current_idx) / len(questions))
+        st.caption(f"Question {current_idx + 1} of {len(questions)}")
+        
+        st.markdown(f"""
+        <div class="quiz-container">
+            <div class="question-text">
+                📝 {current_q.get('question', 'Question not available')}
+            </div>
+        """, unsafe_allow_html=True)
+        
+        options = current_q.get('options', [
+            "A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"
+        ])
+        
+        answer_key = f"mcq_answer_{current_idx}"
+        if answer_key not in st.session_state:
+            st.session_state[answer_key] = None
+        
+        selected_option = st.radio(
+            "Choose your answer:",
+            options,
+            key=f"radio_{current_idx}",
+            label_visibility="collapsed",
+            index=None
+        )
+        
+        if selected_option:
+            selected_letter = selected_option[0]
+            st.session_state[answer_key] = selected_letter
+        
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if current_idx < len(questions) - 1:
+                if st.button("Next Question ▶", use_container_width=True, type="primary"):
+                    if st.session_state[answer_key] is not None:
+                        if current_idx >= len(st.session_state.user_answers):
+                            st.session_state.user_answers.append(st.session_state[answer_key])
+                        else:
+                            st.session_state.user_answers[current_idx] = st.session_state[answer_key]
+                        st.session_state.current_question_index += 1
+                        st.rerun()
+                    else:
+                        st.warning("Please select an answer before continuing!")
+            else:
+                if st.button("📊 Submit Quiz", use_container_width=True, type="primary"):
+                    if st.session_state[answer_key] is not None:
+                        if current_idx >= len(st.session_state.user_answers):
+                            st.session_state.user_answers.append(st.session_state[answer_key])
+                        else:
+                            st.session_state.user_answers[current_idx] = st.session_state[answer_key]
+                        
+                        score = 0
+                        for i, q in enumerate(questions):
+                            if i < len(st.session_state.user_answers) and st.session_state.user_answers[i] == q.get('correct', 'A'):
+                                score += 1
+                        
+                        st.session_state.quiz_score = score
+                        st.session_state.quiz_active = False
+                        st.session_state.show_results = True
+                        
+                        points_earned = score * 10
+                        st.session_state.points_earned += points_earned
+                        
+                        quiz_name = f"{st.session_state.quiz_subject}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                        st.session_state.quiz_scores[quiz_name] = {
+                            'score': score,
+                            'total': len(questions),
+                            'percentage': (score/len(questions))*100,
+                            'date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            'subject': st.session_state.quiz_subject
+                        }
+                        st.rerun()
+                    else:
+                        st.warning("Please select an answer before submitting!")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
-github_storage = get_github_storage()
+# Results Display
+if st.session_state.show_results:
+    questions = st.session_state.quiz_questions_list
+    answers = st.session_state.user_answers
+    score = st.session_state.quiz_score
+    total = len(questions)
+    percentage = (score / total) * 100 if total > 0 else 0
+    
+    st.markdown(f"""
+    <div class="quiz-container">
+        <div style="text-align: center;">
+            <h1>🎉 Quiz Completed! 🎉</h1>
+    """, unsafe_allow_html=True)
+    
+    if percentage >= 80:
+        st.markdown(f"""
+        <div class="score-card">
+            <div>🏆 EXCELLENT! 🏆</div>
+            <div class="score-number">{score}/{total}</div>
+            <div>{percentage:.0f}% - Great job! ⭐</div>
+        </div>
+        """, unsafe_allow_html=True)
+    elif percentage >= 50:
+        st.markdown(f"""
+        <div class="score-card">
+            <div>🌟 GOOD WORK! 🌟</div>
+            <div class="score-number">{score}/{total}</div>
+            <div>{percentage:.0f}% - Keep practicing! 📚</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="score-card">
+            <div>💪 KEEP GOING! 💪</div>
+            <div class="score-number">{score}/{total}</div>
+            <div>{percentage:.0f}% - Review and try again!</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("### 📝 Review Your Answers")
+    for i, q in enumerate(questions):
+        user_answer = answers[i] if i < len(answers) else "Not answered"
+        correct_answer = q.get('correct', 'A')
+        is_correct = user_answer == correct_answer
+        
+        options = q.get('options', [])
+        user_option_text = ""
+        correct_option_text = ""
+        
+        for opt in options:
+            if opt.startswith(user_answer):
+                user_option_text = opt
+            if opt.startswith(correct_answer):
+                correct_option_text = opt
+        
+        st.markdown(f"""
+        <div style="background: {'#d4edda' if is_correct else '#f8d7da'}; padding: 1rem; border-radius: 10px; margin: 0.5rem 0;">
+            <strong>Q{i+1}:</strong> {q.get('question', 'Question not available')}<br>
+            <strong>Your answer:</strong> {user_answer}. {user_option_text}<br>
+            <strong>Correct answer:</strong> {correct_answer}. {correct_option_text}<br>
+            <strong>💡 Explanation:</strong> {q.get('explanation', 'Review your study materials.')}
+        </div>
+        """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🔄 Take Another Quiz", use_container_width=True, type="primary"):
+            st.session_state.quiz_active = False
+            st.session_state.show_results = False
+            st.session_state.user_answers = []
+            st.session_state.quiz_questions_list = []
+            st.session_state.current_question_index = 0
+            st.session_state.quiz_score = 0
+            st.rerun()
+    
+    with col2:
+        if st.button("🏠 Back to Home", use_container_width=True):
+            st.switch_page("app.py")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    if percentage >= 70:
+        st.balloons()
+
+# Statistics
+st.markdown("---")
+st.markdown("## 🏆 Your Quiz Statistics")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    total_quizzes = len(st.session_state.quiz_scores)
+    st.metric("Total Quizzes Taken", total_quizzes)
+
+with col2:
+    st.metric("Points Earned", st.session_state.points_earned)
+
+st.markdown("---")
+st.markdown("""
+<div style="text-align: center; padding: 1rem; color: #666;">
+    💪 Practice makes progress! Take quizzes to test your knowledge! 🌟
+</div>
+""", unsafe_allow_html=True)
