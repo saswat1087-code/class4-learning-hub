@@ -31,6 +31,10 @@ if 'show_results' not in st.session_state:
     st.session_state.show_results = False
 if 'quiz_score' not in st.session_state:
     st.session_state.quiz_score = 0
+if 'quiz_scores' not in st.session_state:   
+    st.session_state.quiz_scores = {}        
+if 'points_earned' not in st.session_state:   
+    st.session_state.points_earned = 0         
 
 # Subject to folder mapping
 SUBJECT_FOLDER_MAP = {
