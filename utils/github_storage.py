@@ -1,171 +1,200 @@
 """
-GitHub Storage Helper - Corrected Version
+GitHub Storage Helper - Direct URL Version for Class 4 Learning Hub
+Fetches chapter content directly from raw GitHub URLs
 """
 
 import streamlit as st
 import requests
-import urllib.parse
+import re
 from typing import Dict, List
 
 class GitHubStorage:
     def __init__(self):
-        self.repo_owner = "saswat1087-code"
-        self.repo_name = "class4-learning-hub"
-        self.branch = "main"
-        
-        # Path to your content
-        self.content_path = "data/CLASS 4 (2026-27)/FIRST TERM"
-        self.encoded_path = urllib.parse.quote(self.content_path)
-        
-        # Raw URL base
-        self.raw_base = f"https://raw.githubusercontent.com/{self.repo_owner}/{self.repo_name}/{self.branch}/{self.encoded_path}"
-        
-        self.cache = {}
-        
-        # Define your subjects and chapters
-        self.subjects_list = [
-            {
-                "id": "computer",
-                "name": "Computer Science",
-                "folder_name": "COMPUTER",
+        # Define subjects and chapters with DIRECT URLs to content.md
+        self.subjects_data = {
+            "COMPUTER": {
+                "display_name": "Computer Science",
                 "icon": "💻",
                 "color": "#4A90E2",
-                "chapters": [
-                    {"id": "chapter1", "title": "Chapter 1 - Storage and Memory Devices", "folder": "Chapter 1 - Storage and Memory Devices"},
-                    {"id": "chapter2", "title": "Chapter 2 - GUI Operating System", "folder": "Chapter 2 - GUI Operating System"},
-                    {"id": "chapter3", "title": "Chapter 3 - Internet and Email", "folder": "Chapter 3 - Internet and Email"},
-                    {"id": "chapter4", "title": "Chapter 4 - MS Paint", "folder": "Chapter 4 - MS Paint"}
-                ]
+                "chapters": {
+                    "Chapter 1 - Storage and Memory Devices": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/COMPUTER/Chapter%201%20-%20Storage%20and%20Memory%20Devices/content.md"
+                    },
+                    "Chapter 2 - GUI Operating System": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/COMPUTER/Chapter%202%20-%20GUI%20Operating%20System/content.md"
+                    },
+                    "Chapter 3 - Internet and Email": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/COMPUTER/Chapter%203%20-%20Internet%20and%20Email/content.md"
+                    },
+                    "Chapter 4 - MS Paint": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/COMPUTER/Chapter%204%20-%20MS%20Paint/content.md"
+                    }
+                }
             },
-            {
-                "id": "science",
-                "name": "Science",
-                "folder_name": "SCIENCE",
+            "SCIENCE": {
+                "display_name": "Science",
                 "icon": "🔬",
                 "color": "#4CAF50",
-                "chapters": [
-                    {"id": "chapter1", "title": "Chapter 1 - Plants", "folder": "Chapter 1 - Plants"},
-                    {"id": "chapter2", "title": "Chapter 2 - Animals", "folder": "Chapter 2 - Animals"},
-                    {"id": "chapter3", "title": "Chapter 3 - Our Body", "folder": "Chapter 3 - Our Body"}
-                ]
+                "chapters": {
+                    "Chapter 1 - Plants": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/SCIENCE/Chapter%201%20-%20Plants/content.md"
+                    },
+                    "Chapter 2 - Animals": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/SCIENCE/Chapter%202%20-%20Animals/content.md"
+                    },
+                    "Chapter 3 - Our Body": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/SCIENCE/Chapter%203%20-%20Our%20Body/content.md"
+                    }
+                }
             },
-            {
-                "id": "mathematics",
-                "name": "Mathematics",
-                "folder_name": "MATHEMATICS",
+            "MATHEMATICS": {
+                "display_name": "Mathematics",
                 "icon": "🧮",
                 "color": "#FF9800",
-                "chapters": [
-                    {"id": "chapter1", "title": "Chapter 1 - Large Numbers", "folder": "Chapter 1 - Large Numbers"},
-                    {"id": "chapter2", "title": "Chapter 2 - Addition and Subtraction", "folder": "Chapter 2 - Addition and Subtraction"},
-                    {"id": "chapter3", "title": "Chapter 3 - Multiplication", "folder": "Chapter 3 - Multiplication"}
-                ]
+                "chapters": {
+                    "Chapter 1 - Large Numbers": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/MATHEMATICS/Chapter%201%20-%20Large%20Numbers/content.md"
+                    },
+                    "Chapter 2 - Addition and Subtraction": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/MATHEMATICS/Chapter%202%20-%20Addition%20and%20Subtraction/content.md"
+                    },
+                    "Chapter 3 - Multiplication": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/MATHEMATICS/Chapter%203%20-%20Multiplication/content.md"
+                    },
+                    "Chapter 4 - Division": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/MATHEMATICS/Chapter%204%20-%20Division/content.md"
+                    }
+                }
             },
-            {
-                "id": "english-language",
-                "name": "English Language",
-                "folder_name": "ENGLISH LANGUAGE",
+            "ENGLISH LANGUAGE": {
+                "display_name": "English Language",
                 "icon": "✍️",
                 "color": "#9C27B0",
-                "chapters": [
-                    {"id": "chapter1", "title": "Chapter 1 - Nouns and Pronouns", "folder": "Chapter 1 - Nouns and Pronouns"},
-                    {"id": "chapter2", "title": "Chapter 2 - Verbs and Tenses", "folder": "Chapter 2 - Verbs and Tenses"}
-                ]
+                "chapters": {
+                    "Chapter 1 - Nouns and Pronouns": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/ENGLISH%20LANGUAGE/Chapter%201%20-%20Nouns%20and%20Pronouns/content.md"
+                    },
+                    "Chapter 2 - Verbs and Tenses": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/ENGLISH%20LANGUAGE/Chapter%202%20-%20Verbs%20and%20Tenses/content.md"
+                    },
+                    "Chapter 3 - Adjectives and Adverbs": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/ENGLISH%20LANGUAGE/Chapter%203%20-%20Adjectives%20and%20Adverbs/content.md"
+                    },
+                    "Chapter 4 - Sentence Formation": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/ENGLISH%20LANGUAGE/Chapter%204%20-%20Sentence%20Formation/content.md"
+                    }
+                }
             },
-            {
-                "id": "english-literature",
-                "name": "English Literature",
-                "folder_name": "ENGLISH LITERATURE",
+            "ENGLISH LITERATURE": {
+                "display_name": "English Literature",
                 "icon": "📖",
                 "color": "#9C27B0",
-                "chapters": [
-                    {"id": "chapter1", "title": "Chapter 1 - The Magic Garden", "folder": "Chapter 1 - The Magic Garden"},
-                    {"id": "chapter2", "title": "Chapter 2 - The Enchanted Castle", "folder": "Chapter 2 - The Enchanted Castle"}
-                ]
+                "chapters": {
+                    "Chapter 1 - The Magic Garden": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/ENGLISH%20LITERATURE/Chapter%201%20-%20The%20Magic%20Garden/content.md"
+                    },
+                    "Chapter 2 - The Enchanted Castle": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/ENGLISH%20LITERATURE/Chapter%202%20-%20The%20Enchanted%20Castle/content.md"
+                    },
+                    "Chapter 3 - The Giving Tree": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/ENGLISH%20LITERATURE/Chapter%203%20-%20The%20Giving%20Tree/content.md"
+                    },
+                    "Poem - A Home Song": {
+                        "url": "https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/ENGLISH%20LITERATURE/Poem%20-%20A%20Home%20Song/content.md"
+                    }
+                }
             }
-        ]
+        }
+        
+        self.cache = {}
     
     def get_subjects(self) -> List[Dict]:
         """Get list of all subjects"""
         subjects = []
-        for subject in self.subjects_list:
+        for folder_name, data in self.subjects_data.items():
             subjects.append({
-                'id': subject['id'],
-                'name': subject['name'],
-                'folder_name': subject['folder_name'],
-                'icon': subject['icon'],
-                'color': subject['color'],
-                'path': subject['folder_name']
+                'id': folder_name.lower().replace(' ', '-'),
+                'name': data['display_name'],
+                'folder_name': folder_name,
+                'icon': data['icon'],
+                'color': data['color'],
+                'path': folder_name
             })
         return subjects
     
     def get_chapters(self, subject_path: str) -> List[Dict]:
         """Get chapters for a subject"""
-        for subject in self.subjects_list:
-            if subject['folder_name'] == subject_path:
-                chapters = []
-                for chapter in subject.get('chapters', []):
-                    chapters.append({
-                        'id': chapter['id'],
-                        'title': chapter['title'],
-                        'path': f"{subject_path}/{chapter['folder']}",
-                        'folder': chapter['folder']
-                    })
-                return chapters
+        if subject_path in self.subjects_data:
+            chapters = []
+            for chapter_title in self.subjects_data[subject_path]['chapters'].keys():
+                chapters.append({
+                    'id': chapter_title.lower().replace(' ', '-').replace('-', '-'),
+                    'title': chapter_title,
+                    'path': f"{subject_path}/{chapter_title}",
+                    'folder': chapter_title
+                })
+            return chapters
         return []
     
     def get_chapter_content(self, subject_path: str, chapter_path: str) -> Dict:
-        """Get content.md from a chapter folder"""
+        """Get chapter content directly from URL"""
         cache_key = f"chapter_{subject_path}_{chapter_path}"
         if cache_key in self.cache:
             return self.cache[cache_key]
         
-        # Build the URL - URL encode spaces
-        encoded_subject = urllib.parse.quote(subject_path)
-        encoded_chapter = urllib.parse.quote(chapter_path.split('/')[-1])
+        # Extract chapter title from chapter_path
+        chapter_title = chapter_path.split('/')[-1]
         
-        content_url = f"{self.raw_base}/{encoded_subject}/{encoded_chapter}/content.md"
-        
-        try:
-            response = requests.get(content_url, timeout=10)
+        # Get the chapter URL from our data
+        if subject_path in self.subjects_data:
+            chapter_data = self.subjects_data[subject_path]['chapters'].get(chapter_title)
             
-            if response.status_code == 200:
-                content = response.text
-                parsed = self.parse_markdown(content)
-                # Set the title from the chapter
-                if not parsed.get('title'):
-                    parsed['title'] = chapter_path.split('/')[-1].replace('_', ' ').replace('-', ' ')
-                self.cache[cache_key] = parsed
-                return parsed
-            else:
-                return self.get_empty_chapter()
-        except Exception as e:
-            return self.get_empty_chapter()
+            if chapter_data and 'url' in chapter_data:
+                url = chapter_data['url']
+                
+                try:
+                    response = requests.get(url, timeout=15)
+                    
+                    if response.status_code == 200:
+                        content = response.text
+                        parsed = self.parse_markdown(content, chapter_title)
+                        self.cache[cache_key] = parsed
+                        return parsed
+                    else:
+                        return self.get_empty_chapter(chapter_title, f"HTTP {response.status_code}")
+                except Exception as e:
+                    return self.get_empty_chapter(chapter_title, str(e))
+        
+        return self.get_empty_chapter(chapter_title, "No URL configured")
     
     def get_files_in_folder(self, folder_path: str) -> List[Dict]:
-        """Get files from folders (simplified)"""
+        """Get files from a folder (for assignments, projects)"""
+        # This is for future implementation
         return []
     
     def get_all_assignments(self) -> Dict[str, List[Dict]]:
-        """Get assignments"""
+        """Get all assignments grouped by subject"""
+        # This is for future implementation
         return {}
     
     def get_revision_papers(self) -> List[Dict]:
-        """Get revision papers"""
+        """Get revision papers from FIRST REVIEW REVISION PAPERS folder"""
+        # This is for future implementation
         return []
     
     def get_projects(self) -> List[Dict]:
-        """Get projects"""
+        """Get projects from PROJECT folder"""
+        # This is for future implementation
         return []
     
     def get_total_resources_count(self) -> Dict:
         """Get resource counts"""
         total_chapters = 0
-        for subject in self.subjects_list:
-            total_chapters += len(subject.get('chapters', []))
+        for subject in self.subjects_data.values():
+            total_chapters += len(subject.get('chapters', {}))
         
         return {
-            'subjects': len(self.subjects_list),
+            'subjects': len(self.subjects_data),
             'chapters': total_chapters,
             'assignments': 0,
             'revision_papers': 0,
@@ -173,14 +202,20 @@ class GitHubStorage:
         }
     
     def get_file_type(self, filename: str) -> str:
-        return 'unknown'
+        """Get file type from extension"""
+        ext = filename.split('.')[-1].lower()
+        types = {
+            'pdf': 'pdf', 'doc': 'word', 'docx': 'word',
+            'jpg': 'image', 'png': 'image', 'md': 'markdown'
+        }
+        return types.get(ext, 'unknown')
     
-    def parse_markdown(self, content: str) -> Dict:
+    def parse_markdown(self, content: str, title: str = "") -> Dict:
         """Parse markdown content into structured format"""
         lines = content.split('\n')
         
         chapter_data = {
-            'title': '',
+            'title': title if title else 'Chapter',
             'content': '',
             'key_points': [],
             'vocabulary': [],
@@ -192,37 +227,38 @@ class GitHubStorage:
         current_text = []
         
         for line in lines:
-            # Title
+            # Title from markdown heading
             if line.startswith('# ') and not chapter_data['title']:
                 chapter_data['title'] = line[2:].strip()
             
-            # Content section
+            # Detect sections
             elif line.startswith('## Content'):
                 current_section = 'content'
                 current_text = []
-            
-            # Key Points section
             elif line.startswith('## Key Points'):
                 if current_section == 'content' and current_text:
                     chapter_data['content'] = '\n'.join(current_text).strip()
                 current_section = 'key_points'
                 current_text = []
-            
-            # Vocabulary section
             elif line.startswith('## Vocabulary'):
                 if current_section == 'key_points' and current_text:
                     chapter_data['key_points'] = [p for p in current_text if p.strip()]
                 current_section = 'vocabulary'
                 current_text = []
-            
-            # Fun Fact section
             elif line.startswith('## Fun Fact'):
                 if current_section == 'vocabulary' and current_text:
-                    chapter_data['vocabulary'] = [v for v in current_text if v.strip()]
+                    # Handle vocabulary words that might be bolded
+                    vocab_items = []
+                    for v in current_text:
+                        # Extract bold text or clean up
+                        bold_match = re.search(r'\*\*(.*?)\*\*', v)
+                        if bold_match:
+                            vocab_items.append(bold_match.group(1))
+                        elif v.strip():
+                            vocab_items.append(v.strip())
+                    chapter_data['vocabulary'] = vocab_items if vocab_items else current_text
                 current_section = 'fun_fact'
                 current_text = []
-            
-            # Practice Questions section
             elif line.startswith('## Practice Questions'):
                 if current_section == 'fun_fact' and current_text:
                     chapter_data['fun_fact'] = '\n'.join(current_text).strip()
@@ -232,10 +268,14 @@ class GitHubStorage:
             # Bullet points
             elif line.startswith('- ') or line.startswith('• ') or line.startswith('* '):
                 if current_text is not None:
-                    # Clean up the bullet point
                     bullet_text = line.lstrip('-•* ').strip()
                     if bullet_text:
                         current_text.append(bullet_text)
+            
+            # Bold text for vocabulary
+            elif '**' in line and current_section == 'vocabulary':
+                if current_text is not None:
+                    current_text.append(line.strip())
             
             # Regular text (not empty and not a header)
             elif line.strip() and not line.startswith('#'):
@@ -246,29 +286,38 @@ class GitHubStorage:
         if current_section == 'questions' and current_text:
             chapter_data['practice_questions'] = [q for q in current_text if q.strip()]
         
-        # If content is still empty, use the raw text
+        # If no content was parsed, use regex to extract
         if not chapter_data['content'] and not chapter_data['key_points']:
-            # Just use the first few paragraphs as content
-            chapter_data['content'] = content[:500]
+            # Try to extract content between ## Content and next ##
+            content_match = re.search(r'## Content\s+(.*?)(?=##|$)', content, re.DOTALL)
+            if content_match:
+                chapter_data['content'] = content_match.group(1).strip()
+            else:
+                chapter_data['content'] = content[:500] if content else "Content not available"
         
         return chapter_data
     
-    def get_empty_chapter(self) -> Dict:
+    def get_empty_chapter(self, title: str = "", error: str = "") -> Dict:
+        """Return empty chapter structure for missing content"""
+        error_msg = f" ({error})" if error else ""
         return {
-            'title': 'Content Coming Soon',
-            'content': '📚 This chapter content is being prepared. Check back later!',
+            'title': title if title else 'Content Coming Soon',
+            'content': f'📚 This chapter content is being prepared. Check back later!{error_msg}',
             'key_points': ['✨ Exciting content coming soon!'],
             'vocabulary': ['📖 New words will appear here'],
             'fun_fact': '🌟 Learning is an adventure!',
-            'practice_questions': ['💭 What do you hope to learn?']
+            'practice_questions': ['💭 What do you hope to learn in this chapter?']
         }
     
     def clear_cache(self):
+        """Clear the cache"""
         self.cache = {}
 
-# Create instance
+# Create singleton instance
 @st.cache_resource
 def get_github_storage():
+    """Get or create the GitHub storage instance"""
     return GitHubStorage()
 
+# Global instance
 github_storage = get_github_storage()
