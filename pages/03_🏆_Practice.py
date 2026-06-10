@@ -18,7 +18,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize session state
+# ============================================================================
+# INITIALIZE ALL SESSION STATE VARIABLES
+# ============================================================================
 if 'quiz_active' not in st.session_state:
     st.session_state.quiz_active = False
 if 'current_question_index' not in st.session_state:
@@ -31,6 +33,16 @@ if 'show_results' not in st.session_state:
     st.session_state.show_results = False
 if 'quiz_score' not in st.session_state:
     st.session_state.quiz_score = 0
+if 'quiz_subject' not in st.session_state:
+    st.session_state.quiz_subject = None
+if 'quiz_chapter' not in st.session_state:
+    st.session_state.quiz_chapter = None
+if 'quiz_start_time' not in st.session_state:
+    st.session_state.quiz_start_time = None
+if 'quiz_scores' not in st.session_state:
+    st.session_state.quiz_scores = {}
+if 'points_earned' not in st.session_state:
+    st.session_state.points_earned = 0
 
 st.markdown("""
 <style>
@@ -143,7 +155,6 @@ def get_all_available_files() -> dict:
     for file in revision_files:
         if file['type'] == 'pdf':
             file['category'] = 'revision'
-            # Smart categorize based on filename
             categorized_subject = categorize_file(file['name'])
             if categorized_subject and categorized_subject in all_files:
                 all_files[categorized_subject].append(file)
@@ -367,7 +378,7 @@ if not st.session_state.quiz_active and not st.session_state.show_results:
                     else:
                         st.error("Could not read the PDF file.")
 
-# Active Quiz Mode (same as before)
+# Active Quiz Mode
 if st.session_state.quiz_active:
     questions = st.session_state.quiz_questions_list
     current_idx = st.session_state.current_question_index
@@ -436,8 +447,11 @@ if st.session_state.quiz_active:
                         st.session_state.show_results = True
                         
                         points_earned = score * 10
-                        data_manager.award_points(points_earned, f"scored {score}/{len(questions)} on quiz!", category="quiz")
+                        # Award points using data_manager
+                        if 'points_earned' in st.session_state:
+                            st.session_state.points_earned += points_earned
                         
+                        # Save to quiz scores
                         quiz_name = f"{st.session_state.quiz_subject}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
                         st.session_state.quiz_scores[quiz_name] = {
                             'score': score,
@@ -547,3 +561,10 @@ with col1:
 
 with col2:
     st.metric("Points Earned", st.session_state.points_earned)
+
+st.markdown("---")
+st.markdown("""
+<div style="text-align: center; padding: 1rem; color: #666;">
+    💪 Practice with questions from your assignments and revision papers! 🌟
+</div>
+""", unsafe_allow_html=True)
