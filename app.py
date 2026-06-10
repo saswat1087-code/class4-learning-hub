@@ -246,6 +246,8 @@ def init_session_state():
         'current_streak': 0,
         'longest_streak': 0
     }
+    # Force overwrite old cached session values
+    st.session_state['user_name'] = os.getenv("STUDENT_NAME", "Mayra")
     
     for key, default_value in defaults.items():
         if key not in st.session_state:
