@@ -1,5 +1,5 @@
 """
-GitHub Storage Helper - Simplified Version for Your Structure
+GitHub Storage Helper - Corrected Version
 """
 
 import streamlit as st
@@ -22,7 +22,7 @@ class GitHubStorage:
         
         self.cache = {}
         
-        # Define your subjects and chapters MANUALLY (since API doesn't work)
+        # Define your subjects and chapters
         self.subjects_list = [
             {
                 "id": "computer",
@@ -100,8 +100,7 @@ class GitHubStorage:
         return subjects
     
     def get_chapters(self, subject_path: str) -> List[Dict]:
-        """Get chapters for a subject - returns from our manual list"""
-        # Find the subject
+        """Get chapters for a subject"""
         for subject in self.subjects_list:
             if subject['folder_name'] == subject_path:
                 chapters = []
@@ -116,22 +115,26 @@ class GitHubStorage:
         return []
     
     def get_chapter_content(self, subject_path: str, chapter_path: str) -> Dict:
-        """Get content.md from a chapter folder using raw URL"""
+        """Get content.md from a chapter folder"""
         cache_key = f"chapter_{subject_path}_{chapter_path}"
         if cache_key in self.cache:
             return self.cache[cache_key]
         
+        # Build the URL - URL encode spaces
+        encoded_subject = urllib.parse.quote(subject_path)
+        encoded_chapter = urllib.parse.quote(chapter_path.split('/')[-1])
+        
+        content_url = f"{self.raw_base}/{encoded_subject}/{encoded_chapter}/content.md"
+        
         try:
-            # Extract just the chapter folder name from the full path
-            parts = chapter_path.split('/')
-            chapter_folder = parts[-1] if parts else chapter_path
-            
-            content_url = f"{self.raw_base}/{subject_path}/{chapter_folder}/content.md"
-            response = requests.get(content_url)
+            response = requests.get(content_url, timeout=10)
             
             if response.status_code == 200:
                 content = response.text
                 parsed = self.parse_markdown(content)
+                # Set the title from the chapter
+                if not parsed.get('title'):
+                    parsed['title'] = chapter_path.split('/')[-1].replace('_', ' ').replace('-', ' ')
                 self.cache[cache_key] = parsed
                 return parsed
             else:
@@ -140,48 +143,20 @@ class GitHubStorage:
             return self.get_empty_chapter()
     
     def get_files_in_folder(self, folder_path: str) -> List[Dict]:
-        """Get files from ASSIGNMENTS folder"""
-        files = []
-        try:
-            # Try to get file from raw URL
-            test_url = f"{self.raw_base}/{folder_path}"
-            response = requests.get(test_url)
-            # This won't work for folders, only files
-        except:
-            pass
-        return files
+        """Get files from folders (simplified)"""
+        return []
     
     def get_all_assignments(self) -> Dict[str, List[Dict]]:
-        """Get assignments - simplified"""
+        """Get assignments"""
         return {}
     
     def get_revision_papers(self) -> List[Dict]:
         """Get revision papers"""
-        papers = []
-        try:
-            # Check for known files
-            test_files = [
-                "FIRST REVIEW REVISION PAPERS/Class 4 1st Review Test.pdf",
-                "PROJECT/Class 4 First Term Syllabus.pdf"
-            ]
-            
-            for file_path in test_files:
-                test_url = f"{self.raw_base}/{file_path}"
-                response = requests.head(test_url)
-                if response.status_code == 200:
-                    papers.append({
-                        'name': file_path.split('/')[-1],
-                        'url': test_url,
-                        'type': 'pdf'
-                    })
-        except:
-            pass
-        
-        return papers
+        return []
     
     def get_projects(self) -> List[Dict]:
         """Get projects"""
-        return self.get_revision_papers()
+        return []
     
     def get_total_resources_count(self) -> Dict:
         """Get resource counts"""
@@ -193,18 +168,12 @@ class GitHubStorage:
             'subjects': len(self.subjects_list),
             'chapters': total_chapters,
             'assignments': 0,
-            'revision_papers': len(self.get_revision_papers()),
-            'projects': len(self.get_projects())
+            'revision_papers': 0,
+            'projects': 0
         }
     
     def get_file_type(self, filename: str) -> str:
-        """Get file type from extension"""
-        ext = filename.split('.')[-1].lower()
-        types = {
-            'pdf': 'pdf', 'doc': 'word', 'docx': 'word',
-            'jpg': 'image', 'png': 'image', 'md': 'markdown'
-        }
-        return types.get(ext, 'unknown')
+        return 'unknown'
     
     def parse_markdown(self, content: str) -> Dict:
         """Parse markdown content into structured format"""
@@ -223,40 +192,64 @@ class GitHubStorage:
         current_text = []
         
         for line in lines:
+            # Title
             if line.startswith('# ') and not chapter_data['title']:
                 chapter_data['title'] = line[2:].strip()
+            
+            # Content section
             elif line.startswith('## Content'):
                 current_section = 'content'
                 current_text = []
+            
+            # Key Points section
             elif line.startswith('## Key Points'):
-                if current_section == 'content':
+                if current_section == 'content' and current_text:
                     chapter_data['content'] = '\n'.join(current_text).strip()
                 current_section = 'key_points'
                 current_text = []
+            
+            # Vocabulary section
             elif line.startswith('## Vocabulary'):
-                if current_section == 'key_points':
+                if current_section == 'key_points' and current_text:
                     chapter_data['key_points'] = [p for p in current_text if p.strip()]
                 current_section = 'vocabulary'
                 current_text = []
+            
+            # Fun Fact section
             elif line.startswith('## Fun Fact'):
-                if current_section == 'vocabulary':
+                if current_section == 'vocabulary' and current_text:
                     chapter_data['vocabulary'] = [v for v in current_text if v.strip()]
                 current_section = 'fun_fact'
                 current_text = []
+            
+            # Practice Questions section
             elif line.startswith('## Practice Questions'):
-                if current_section == 'fun_fact':
+                if current_section == 'fun_fact' and current_text:
                     chapter_data['fun_fact'] = '\n'.join(current_text).strip()
                 current_section = 'questions'
                 current_text = []
-            elif line.startswith('- ') or line.startswith('• '):
+            
+            # Bullet points
+            elif line.startswith('- ') or line.startswith('• ') or line.startswith('* '):
                 if current_text is not None:
-                    current_text.append(line[2:].strip())
+                    # Clean up the bullet point
+                    bullet_text = line.lstrip('-•* ').strip()
+                    if bullet_text:
+                        current_text.append(bullet_text)
+            
+            # Regular text (not empty and not a header)
             elif line.strip() and not line.startswith('#'):
                 if current_text is not None:
                     current_text.append(line.strip())
         
+        # Handle last section
         if current_section == 'questions' and current_text:
             chapter_data['practice_questions'] = [q for q in current_text if q.strip()]
+        
+        # If content is still empty, use the raw text
+        if not chapter_data['content'] and not chapter_data['key_points']:
+            # Just use the first few paragraphs as content
+            chapter_data['content'] = content[:500]
         
         return chapter_data
     
