@@ -1,6 +1,5 @@
 """
-Practice & Tests Page - Smart File Categorization
-Automatically detects and categorizes revision papers and assignments
+Practice & Tests Page - Smart File Categorization with Dynamic File Addition
 """
 
 import streamlit as st
@@ -86,13 +85,12 @@ st.markdown("""
     margin: 0.5rem 0;
     border-left: 4px solid #667eea;
 }
-.debug-box {
-    background: #2c3e50;
-    color: #ecf0f1;
+.add-file-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
     padding: 1rem;
     border-radius: 10px;
-    font-family: monospace;
-    font-size: 0.8rem;
+    margin: 0.5rem 0;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -105,44 +103,87 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================================
-# DEBUG SECTION - Remove after fixing
+# DYNAMIC FILE ADDITION SECTION
 # ============================================================================
-with st.expander("🔧 Debug: Check Available Files (Click to expand)", expanded=True):
-    st.markdown("### Checking GitHub Folders...")
+with st.expander("➕ Add New PDF File to Library", expanded=False):
+    st.markdown("### Add a PDF file to make it available for quizzes")
     
-    # Test each subject folder in ASSIGNMENTS
-    test_folders = ["COMPUTER", "ENGLISH LANGUAGE", "ENGLISH LITERATURE", "MATHEMATICS", "SCIENCE", "SOCIAL STUDIES"]
+    col1, col2, col3 = st.columns(3)
     
-    for folder in test_folders:
-        folder_path = f"ASSIGNMENTS/{folder}"
-        st.markdown(f"**📁 {folder_path}**")
-        files = github_storage.get_files_in_folder(folder_path)
+    with col1:
+        folder_options = [
+            "ASSIGNMENTS/COMPUTER",
+            "ASSIGNMENTS/ENGLISH LANGUAGE",
+            "ASSIGNMENTS/ENGLISH LITERATURE",
+            "ASSIGNMENTS/MATHEMATICS",
+            "ASSIGNMENTS/SCIENCE",
+            "ASSIGNMENTS/SOCIAL STUDIES",
+            "FIRST REVIEW REVISION PAPERS",
+            "PROJECT"
+        ]
+        selected_folder = st.selectbox("Select Folder:", folder_options)
+    
+    with col2:
+        filename = st.text_input("PDF Filename:", placeholder="example.pdf", help="Enter the exact filename including .pdf extension")
+    
+    with col3:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("📥 Add PDF to Library", use_container_width=True, type="primary"):
+            if filename and filename.endswith('.pdf'):
+                # URL encode the filename
+                encoded_filename = filename.replace(" ", "%20")
+                
+                # Build the raw URL
+                if selected_folder in ["FIRST REVIEW REVISION PAPERS", "PROJECT"]:
+                    file_url = f"https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/{selected_folder}/{encoded_filename}"
+                else:
+                    file_url = f"https://raw.githubusercontent.com/saswat1087-code/class4-learning-hub/main/data/CLASS%204%20(2026-27)/FIRST%20TERM/{selected_folder}/{encoded_filename}"
+                
+                # Add to known files
+                github_storage.add_file(selected_folder, filename, file_url)
+                st.success(f"✅ Successfully added '{filename}' to {selected_folder}")
+                st.info("💡 Make sure the PDF file actually exists in your GitHub repository at this path!")
+                st.rerun()
+            else:
+                st.error("Please enter a valid PDF filename (must end with .pdf)")
+
+# ============================================================================
+# DEBUG SECTION - Shows what files are available
+# ============================================================================
+with st.expander("🔧 Available Files (Click to expand)", expanded=False):
+    st.markdown("### Files currently available for quizzes:")
+    
+    # Show Assignment folders
+    st.markdown("**📚 ASSIGNMENTS:**")
+    for folder in ["ASSIGNMENTS/COMPUTER", "ASSIGNMENTS/ENGLISH LANGUAGE", "ASSIGNMENTS/ENGLISH LITERATURE", 
+                   "ASSIGNMENTS/MATHEMATICS", "ASSIGNMENTS/SCIENCE", "ASSIGNMENTS/SOCIAL STUDIES"]:
+        files = github_storage.get_files_in_folder(folder)
         if files:
-            st.success(f"✅ Found {len(files)} file(s)")
+            st.success(f"✅ {folder}: {len(files)} file(s)")
             for f in files:
-                st.write(f"  - 📄 {f['name']} ({f['type']}, {f['size']} bytes)")
+                st.write(f"   - {f['name']}")
         else:
-            st.warning(f"❌ No files found in {folder_path}")
+            st.warning(f"⚠️ {folder}: No files")
     
-    # Check FIRST REVIEW REVISION PAPERS
-    st.markdown("**📁 FIRST REVIEW REVISION PAPERS**")
+    # Show Revision Papers
+    st.markdown("**📝 REVISION PAPERS:**")
     revision_files = github_storage.get_files_in_folder("FIRST REVIEW REVISION PAPERS")
     if revision_files:
-        st.success(f"✅ Found {len(revision_files)} file(s)")
+        st.success(f"✅ FIRST REVIEW REVISION PAPERS: {len(revision_files)} file(s)")
         for f in revision_files:
-            st.write(f"  - 📄 {f['name']} ({f['type']})")
+            st.write(f"   - {f['name']}")
     else:
-        st.warning("❌ No files found in FIRST REVIEW REVISION PAPERS")
+        st.warning("⚠️ FIRST REVIEW REVISION PAPERS: No files")
     
-    # Check PROJECT
-    st.markdown("**📁 PROJECT**")
+    # Show Projects
+    st.markdown("**🎯 PROJECTS:**")
     project_files = github_storage.get_files_in_folder("PROJECT")
     if project_files:
-        st.success(f"✅ Found {len(project_files)} file(s)")
+        st.success(f"✅ PROJECT: {len(project_files)} file(s)")
         for f in project_files:
-            st.write(f"  - 📄 {f['name']} ({f['type']})")
+            st.write(f"   - {f['name']}")
     else:
-        st.warning("❌ No files found in PROJECT")
+        st.warning("⚠️ PROJECT: No files")
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -152,27 +193,27 @@ def categorize_file(filename: str) -> str:
     """Smartly categorize files based on filename patterns"""
     filename_lower = filename.lower()
     
-    comp_patterns = ['comp', 'computer', 'cs', 'it', 'coding', 'programming', 'ms word', 'excel', 'powerpoint']
+    comp_patterns = ['comp', 'computer', 'cs', 'it', 'coding', 'programming']
     for pattern in comp_patterns:
         if pattern in filename_lower:
             return "COMPUTER"
     
-    english_patterns = ['eng', 'english', 'grammar', 'literature', 'reading', 'writing', 'essay', 'poem', 'story']
+    english_patterns = ['eng', 'english', 'grammar', 'literature', 'reading']
     for pattern in english_patterns:
         if pattern in filename_lower:
             return "ENGLISH LANGUAGE"
     
-    math_patterns = ['math', 'maths', 'mathematics', 'algebra', 'geometry', 'arithmetic', 'numbers', 'calculation']
+    math_patterns = ['math', 'maths', 'mathematics', 'algebra', 'geometry']
     for pattern in math_patterns:
         if pattern in filename_lower:
             return "MATHEMATICS"
     
-    science_patterns = ['science', 'sci', 'physics', 'chemistry', 'biology', 'plants', 'animals', 'human body', 'force']
+    science_patterns = ['science', 'sci', 'physics', 'chemistry', 'biology']
     for pattern in science_patterns:
         if pattern in filename_lower:
             return "SCIENCE"
     
-    ss_patterns = ['social', 'sst', 'history', 'geography', 'civics', 'map', 'civilization', 'india', 'political']
+    ss_patterns = ['social', 'sst', 'history', 'geography', 'civics']
     for pattern in ss_patterns:
         if pattern in filename_lower:
             return "SOCIAL STUDIES"
@@ -242,24 +283,14 @@ def extract_questions_smart(text: str) -> list:
                 questions.append(clean_q)
     
     # Method 2: Look for lines that start with question words
-    question_words = ['what', 'why', 'how', 'when', 'where', 'which', 'who', 'whom', 
-                      'define', 'explain', 'describe', 'list', 'name', 'state', 
-                      'differentiate', 'compare', 'distinguish']
+    question_words = ['what', 'why', 'how', 'when', 'where', 'which', 'who', 
+                      'define', 'explain', 'describe', 'list', 'name']
     
     for line in lines:
         line = line.strip()
         line_lower = line.lower()
         if any(line_lower.startswith(qw) for qw in question_words):
             if 20 < len(line) < 300 and line not in questions:
-                questions.append(line)
-    
-    # Method 3: Look for lines that are likely questions
-    for line in lines:
-        line = line.strip()
-        if (line and line[0].isupper() and 
-            len(line) > 25 and 
-            any(word in line.lower() for word in ['?', 'explain', 'describe', 'define', 'what is', 'how does'])):
-            if line not in questions and not line.endswith('.'):
                 questions.append(line)
     
     return questions[:25]
@@ -508,13 +539,7 @@ else:
                                 'type': 'assignment'
                             })
         if file_count == 0:
-            st.info("No assignment files found. Add PDFs to ASSIGNMENTS folders.")
-            st.markdown("""
-            **📌 How to add assignments:**
-            1. Go to `data/CLASS 4 (2026-27)/FIRST TERM/ASSIGNMENTS/`
-            2. Add your PDF files to the subject folders (COMPUTER, SCIENCE, etc.)
-            3. Refresh this page
-            """)
+            st.info("No assignment files found. Use the 'Add PDF' section above to add files.")
     
     with tab2:
         st.markdown("### 📝 Revision Papers")
@@ -525,12 +550,7 @@ else:
                 file_count += len(revision_files)
                 with st.expander(f"📁 {subject.replace('_', ' ').title()}", expanded=True):
                     for file in revision_files:
-                        st.markdown(f"""
-                        <div class="file-card">
-                            <strong>📄 {file['name']}</strong>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        if st.button(f"Select {file['name']}", key=f"revision_{file['name']}", use_container_width=True):
+                        if st.button(f"📄 {file['name']}", key=f"revision_{file['name']}", use_container_width=True):
                             all_available_quizzes.append({
                                 'name': file['name'],
                                 'url': file['url'],
@@ -538,7 +558,7 @@ else:
                                 'type': 'revision'
                             })
         if file_count == 0:
-            st.info("No revision papers found. Add PDFs to 'FIRST REVIEW REVISION PAPERS' folder.")
+            st.info("No revision papers found. Use the 'Add PDF' section above to add files.")
     
     with tab3:
         st.markdown("### 🎯 Project Files")
@@ -549,12 +569,7 @@ else:
                 file_count += len(project_files)
                 with st.expander(f"📁 {subject.replace('_', ' ').title()}", expanded=True):
                     for file in project_files:
-                        st.markdown(f"""
-                        <div class="file-card">
-                            <strong>📄 {file['name']}</strong>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        if st.button(f"Select {file['name']}", key=f"project_{file['name']}", use_container_width=True):
+                        if st.button(f"📄 {file['name']}", key=f"project_{file['name']}", use_container_width=True):
                             all_available_quizzes.append({
                                 'name': file['name'],
                                 'url': file['url'],
@@ -562,7 +577,7 @@ else:
                                 'type': 'project'
                             })
         if file_count == 0:
-            st.info("No project files found. Add PDFs to 'PROJECT' folder.")
+            st.info("No project files found. Use the 'Add PDF' section above to add files.")
     
     # Quiz generation section
     if all_available_quizzes:
@@ -594,7 +609,6 @@ else:
                     text = github_storage.extract_text_from_pdf(selected_quiz_data['url'])
                     
                     if text:
-                        st.success(f"✅ PDF loaded successfully! Extracting questions...")
                         questions = extract_questions_smart(text)
                         
                         if questions:
@@ -603,11 +617,9 @@ else:
                             
                             with st.spinner("🎯 Creating multiple choice questions..."):
                                 mcq_questions = []
-                                progress_bar = st.progress(0)
                                 for idx, q in enumerate(selected_questions):
                                     mcq = generate_smart_question(q)
                                     mcq_questions.append(mcq)
-                                    progress_bar.progress((idx + 1) / len(selected_questions))
                                 
                                 st.session_state.quiz_questions_list = mcq_questions
                                 st.session_state.quiz_subject = selected_quiz_data['subject']
@@ -621,7 +633,7 @@ else:
                         else:
                             st.error("No questions could be extracted. Make sure the PDF contains question sentences (ending with ?)")
                     else:
-                        st.error("Could not read the PDF file. Make sure it's a valid PDF.")
+                        st.error("Could not read the PDF file. Make sure it's a valid PDF and exists in GitHub.")
 
 # Statistics
 if not st.session_state.quiz_active and not st.session_state.show_results:
