@@ -1,9 +1,10 @@
 """
-GitHub Storage Helper - Clean Working Version
+GitHub Storage Helper - Complete with PDF Question Extraction
 """
 
 import streamlit as st
 import requests
+import re
 import urllib.parse
 from typing import Dict, List
 
@@ -166,6 +167,7 @@ class GitHubStorage:
         self.cache = {}
     
     def get_subjects(self) -> List[Dict]:
+        """Get list of all subjects"""
         subjects = []
         for folder_name, data in self.subjects_data.items():
             subjects.append({
@@ -179,6 +181,7 @@ class GitHubStorage:
         return subjects
     
     def get_chapters(self, subject_path: str) -> List[Dict]:
+        """Get chapters for a subject"""
         if subject_path in self.subjects_data:
             chapters = []
             for chapter_title in self.subjects_data[subject_path]['chapters'].keys():
@@ -192,7 +195,9 @@ class GitHubStorage:
         return []
     
     def get_chapter_content(self, subject_path: str, chapter_path: str) -> Dict:
+        """Get chapter content directly from URL"""
         cache_key = f"{subject_path}_{chapter_path}"
+        
         if cache_key in self.cache:
             return self.cache[cache_key]
         
@@ -203,19 +208,202 @@ class GitHubStorage:
             
             if chapter_data and 'url' in chapter_data:
                 url = chapter_data['url']
+                
                 try:
                     response = requests.get(url, timeout=15)
+                    
                     if response.status_code == 200:
                         content = response.text
                         parsed = self.parse_markdown(content, chapter_title)
                         self.cache[cache_key] = parsed
                         return parsed
-                except:
-                    pass
+                    else:
+                        return self.get_empty_chapter(chapter_title, f"HTTP {response.status_code}")
+                except Exception as e:
+                    return self.get_empty_chapter(chapter_title, str(e))
         
-        return self.get_empty_chapter(chapter_title)
+        return self.get_empty_chapter(chapter_title, "No URL configured")
+    
+    def get_files_in_folder(self, folder_path: str) -> List[Dict]:
+        """Get all files in a specific folder"""
+        files = []
+        try:
+            folder_api_url = f"{self.api_url}/{folder_path}"
+            response = requests.get(folder_api_url)
+            
+            if response.status_code == 200:
+                items = response.json()
+                for item in items:
+                    if item['type'] == 'file':
+                        files.append({
+                            'name': item['name'],
+                            'url': f"{self.raw_base}/{folder_path}/{item['name']}",
+                            'size': item.get('size', 0),
+                            'type': self.get_file_type(item['name'])
+                        })
+            return files
+        except:
+            return []
+    
+    def extract_text_from_pdf(self, file_url: str) -> str:
+        """Extract text from PDF file"""
+        try:
+            response = requests.get(file_url, timeout=30)
+            if response.status_code == 200:
+                import io
+                import PyPDF2
+                
+                pdf_file = io.BytesIO(response.content)
+                pdf_reader = PyPDF2.PdfReader(pdf_file)
+                
+                text = ""
+                for page in pdf_reader.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + "\n"
+                
+                return text
+        except ImportError:
+            st.warning("PyPDF2 not installed. PDF extraction may be limited.")
+        except Exception as e:
+            pass
+        
+        return ""
+    
+    def extract_questions_from_text(self, text: str) -> list:
+        """Extract questions from extracted PDF text"""
+        questions = []
+        
+        if not text:
+            return questions
+        
+        lines = text.split('\n')
+        
+        patterns = [
+            r'^(\d+)[\.\)]\s+(.+)$',
+            r'^Q\.?\s*(\d+)[\.\)]?\s+(.+)$',
+            r'^Question\s*(\d+)[:\.\)]\s+(.+)$',
+            r'^[\(](\d+)[\)]\s+(.+)$',
+        ]
+        
+        current_question = None
+        current_text = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            matched = False
+            for pattern in patterns:
+                match = re.match(pattern, line, re.IGNORECASE)
+                if match:
+                    if current_question:
+                        full_text = ' '.join(current_text).strip()
+                        if full_text and len(full_text) > 10:
+                            questions.append({'question': full_text, 'type': 'open'})
+                    current_question = match.group(2) if len(match.groups()) > 1 else line
+                    current_text = [current_question]
+                    matched = True
+                    break
+            
+            if not matched and current_question:
+                current_text.append(line)
+        
+        if current_question:
+            full_text = ' '.join(current_text).strip()
+            if full_text and len(full_text) > 10:
+                questions.append({'question': full_text, 'type': 'open'})
+        
+        if len(questions) < 3:
+            for line in lines:
+                line = line.strip()
+                if '?' in line and len(line) > 15 and len(line) < 200:
+                    if not re.match(r'^[A-D][\.\)]', line):
+                        questions.append({'question': line, 'type': 'open'})
+        
+        return questions[:30]
+    
+    def get_questions_from_pdf(self, file_url: str) -> list:
+        """Get questions from a PDF file"""
+        text = self.extract_text_from_pdf(file_url)
+        if text:
+            return self.extract_questions_from_text(text)
+        return []
+    
+    def get_questions_from_folder(self, folder_path: str) -> list:
+        """Get all questions from PDF files in a folder"""
+        all_questions = []
+        files = self.get_files_in_folder(folder_path)
+        
+        for file in files:
+            if file['type'] == 'pdf':
+                questions = self.get_questions_from_pdf(file['url'])
+                if questions:
+                    for q in questions:
+                        q['source'] = file['name']
+                    all_questions.extend(questions)
+        
+        return all_questions
+    
+    def get_all_assignments(self) -> Dict[str, List[Dict]]:
+        """Get all assignments grouped by subject"""
+        all_assignments = {}
+        try:
+            assignments_url = f"{self.api_url}/ASSIGNMENTS"
+            response = requests.get(assignments_url)
+            
+            if response.status_code == 200:
+                items = response.json()
+                for item in items:
+                    if item['type'] == 'dir':
+                        subject_assignments = self.get_files_in_folder(f"ASSIGNMENTS/{item['name']}")
+                        if subject_assignments:
+                            all_assignments[item['name']] = subject_assignments
+            return all_assignments
+        except:
+            return {}
+    
+    def get_revision_papers(self) -> List[Dict]:
+        """Get revision papers"""
+        try:
+            return self.get_files_in_folder("FIRST REVIEW REVISION PAPERS")
+        except:
+            return []
+    
+    def get_projects(self) -> List[Dict]:
+        """Get projects"""
+        try:
+            return self.get_files_in_folder("PROJECT")
+        except:
+            return []
+    
+    def get_total_resources_count(self) -> Dict:
+        """Get resource counts"""
+        total_chapters = 0
+        for subject in self.subjects_data.values():
+            total_chapters += len(subject.get('chapters', {}))
+        
+        return {
+            'subjects': len(self.subjects_data),
+            'chapters': total_chapters,
+            'assignments': 0,
+            'revision_papers': len(self.get_revision_papers()),
+            'projects': len(self.get_projects())
+        }
+    
+    def get_file_type(self, filename: str) -> str:
+        """Get file type from extension"""
+        ext = filename.split('.')[-1].lower()
+        types = {
+            'pdf': 'pdf', 'doc': 'word', 'docx': 'word',
+            'jpg': 'image', 'png': 'image', 'md': 'markdown',
+            'txt': 'text'
+        }
+        return types.get(ext, 'unknown')
     
     def parse_markdown(self, content: str, title: str = "") -> Dict:
+        """Parse markdown content into structured format"""
         chapter_data = {
             'title': title,
             'content': '',
@@ -225,78 +413,61 @@ class GitHubStorage:
             'practice_questions': []
         }
         
-        # Extract content section
+        title_match = re.search(r'^#\s+(.+)$', content, re.MULTILINE)
+        if title_match:
+            chapter_data['title'] = title_match.group(1).strip()
+        
         content_match = re.search(r'## Content\s+(.*?)(?=##|$)', content, re.DOTALL)
         if content_match:
             chapter_data['content'] = content_match.group(1).strip()
         
-        # Extract key points
         points_match = re.search(r'## Key Points\s+(.*?)(?=##|$)', content, re.DOTALL)
         if points_match:
             points_text = points_match.group(1)
             points = re.findall(r'[-•*]\s*(.+?)(?=\n[-•*]|\n\n|$)', points_text, re.DOTALL)
             if points:
                 chapter_data['key_points'] = [p.strip() for p in points]
+            else:
+                chapter_data['key_points'] = [line.strip() for line in points_text.split('\n') if line.strip() and not line.startswith('#')]
         
-        # Extract vocabulary
         vocab_match = re.search(r'## Vocabulary\s+(.*?)(?=##|$)', content, re.DOTALL)
         if vocab_match:
             vocab_text = vocab_match.group(1)
             vocab_items = re.findall(r'\*\*(.*?)\*\*', vocab_text)
+            if not vocab_items:
+                vocab_items = re.findall(r'[-•*]\s*(.+?)(?=\n[-•*]|\n\n|$)', vocab_text, re.DOTALL)
             chapter_data['vocabulary'] = [v.strip() for v in vocab_items][:10]
         
-        # Extract fun fact
         fun_match = re.search(r'## Fun Fact\s+(.*?)(?=##|$)', content, re.DOTALL)
         if fun_match:
             chapter_data['fun_fact'] = fun_match.group(1).strip()
         
-        # Extract practice questions
         questions_match = re.search(r'## Practice Questions\s+(.*?)(?=##|$)', content, re.DOTALL)
         if questions_match:
             questions_text = questions_match.group(1)
             questions = re.findall(r'[-•*]\s*(.+?)(?=\n[-•*]|\n\n|$)', questions_text, re.DOTALL)
             if questions:
                 chapter_data['practice_questions'] = [q.strip() for q in questions]
+            else:
+                chapter_data['practice_questions'] = [q.strip() for q in questions_text.split('\n') if q.strip() and not q.startswith('#')]
         
         if not chapter_data['content'] and not chapter_data['key_points']:
             chapter_data['content'] = content[:500] + ("..." if len(content) > 500 else "")
         
         return chapter_data
     
-    def get_empty_chapter(self, title: str = "") -> Dict:
+    def get_empty_chapter(self, title: str = "", error: str = "") -> Dict:
         return {
             'title': title if title else 'Content Coming Soon',
-            'content': '📚 This chapter content is being prepared. Check back later!',
+            'content': f'📚 This chapter content is being prepared. Check back later! {error}',
             'key_points': ['✨ Exciting content coming soon!'],
             'vocabulary': ['📖 New words will appear here'],
             'fun_fact': '🌟 Learning is an adventure!',
-            'practice_questions': ['💭 What do you hope to learn?']
+            'practice_questions': ['💭 What do you hope to learn in this chapter?']
         }
     
-    def get_files_in_folder(self, folder_path: str) -> List[Dict]:
-        return []
-    
-    def get_revision_papers(self) -> List[Dict]:
-        return []
-    
-    def get_projects(self) -> List[Dict]:
-        return []
-    
-    def get_total_resources_count(self) -> Dict:
-        total_chapters = 0
-        for subject in self.subjects_data.values():
-            total_chapters += len(subject.get('chapters', {}))
-        
-        return {
-            'subjects': len(self.subjects_data),
-            'chapters': total_chapters,
-            'assignments': 0,
-            'revision_papers': 0,
-            'projects': 0
-        }
-    
-    def get_file_type(self, filename: str) -> str:
-        return 'unknown'
+    def clear_cache(self):
+        self.cache = {}
 
 # Create singleton instance
 @st.cache_resource
