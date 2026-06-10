@@ -129,7 +129,7 @@ if subjects:
         
         if subject_data:
             # Get chapters
-            chapters = github_storage.get_chapters(subject_data['path'])
+            chapters = github_storage.get_chapters(subject_data['folder_name'])
             
             # Calculate progress
             total_chapters = len(chapters)
@@ -159,21 +159,24 @@ if subjects:
             with col1:
                 st.markdown("### 📑 Chapters")
                 
-                for chapter in chapters:
-                    chapter_key = f"{subject_data['name']}: {chapter['title']}"
-                    is_completed = chapter_key in st.session_state.completed_chapters
-                    is_current = st.session_state.current_chapter == chapter['id']
-                    
-                    status = "✅" if is_completed else ("📖" if is_current else "📄")
-                    
-                    if st.button(
-                        f"{status} {chapter['title'][:35]}",
-                        key=f"chapter_{chapter['id']}",
-                        use_container_width=True,
-                        type="primary" if is_current else "secondary"
-                    ):
-                        st.session_state.current_chapter = chapter['id']
-                        st.rerun()
+                if chapters:
+                    for chapter in chapters:
+                        chapter_key = f"{subject_data['name']}: {chapter['title']}"
+                        is_completed = chapter_key in st.session_state.completed_chapters
+                        is_current = st.session_state.current_chapter == chapter['id']
+                        
+                        status = "✅" if is_completed else ("📖" if is_current else "📄")
+                        
+                        if st.button(
+                            f"{status} {chapter['title'][:35]}",
+                            key=f"chapter_{chapter['id']}",
+                            use_container_width=True,
+                            type="primary" if is_current else "secondary"
+                        ):
+                            st.session_state.current_chapter = chapter['id']
+                            st.rerun()
+                else:
+                    st.info("No chapters available for this subject yet.")
             
             with col2:
                 if st.session_state.current_chapter:
@@ -182,7 +185,7 @@ if subjects:
                     
                     if chapter_data:
                         # Get chapter content
-                        content = github_storage.get_chapter_content(subject_data['path'], chapter_data['id'])
+                        content = github_storage.get_chapter_content(subject_data['folder_name'], chapter_data['id'])
                         chapter_key = f"{subject_data['name']}: {chapter_data['title']}"
                         is_completed = chapter_key in st.session_state.completed_chapters
                         
@@ -195,26 +198,42 @@ if subjects:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        st.markdown('<div class="content-section">', unsafe_allow_html=True)
-                        st.markdown(f"### 📖 {chapter_data['title']}")
-                        st.write(content['content'])
-                        st.markdown('</div>', unsafe_allow_html=True)
+                        # Display content
+                        if content.get('content'):
+                            st.markdown('<div class="content-section">', unsafe_allow_html=True)
+                            st.markdown("### 📖 Lesson Content")
+                            st.write(content['content'])
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        else:
+                            st.info("📚 Lesson content is being prepared. Check back soon!")
                         
-                        if content['key_points']:
+                        # Display key points
+                        if content.get('key_points') and len(content['key_points']) > 0:
                             st.markdown("### 💡 Key Points")
                             for point in content['key_points']:
-                                st.markdown(f'<div class="key-point">• {point}</div>', unsafe_allow_html=True)
+                                if point and 'coming soon' not in point.lower():
+                                    st.markdown(f'<div class="key-point">• {point}</div>', unsafe_allow_html=True)
                         
-                        if content['vocabulary']:
+                        # Display vocabulary
+                        if content.get('vocabulary') and len(content['vocabulary']) > 0:
                             st.markdown("### 📚 Vocabulary Words")
                             vocab_cols = st.columns(3)
                             for idx, word in enumerate(content['vocabulary'][:9]):
-                                with vocab_cols[idx % 3]:
-                                    st.markdown(f'<div class="vocab-word"><strong>{word}</strong></div>', unsafe_allow_html=True)
+                                if word and 'coming soon' not in word.lower():
+                                    with vocab_cols[idx % 3]:
+                                        st.markdown(f'<div class="vocab-word"><strong>{word}</strong></div>', unsafe_allow_html=True)
                         
-                        if content['fun_fact']:
+                        # Display fun fact
+                        if content.get('fun_fact') and 'coming soon' not in content['fun_fact'].lower():
                             with st.expander("🎉 Fun Fact!"):
                                 st.info(content['fun_fact'])
+                        
+                        # Display practice questions
+                        if content.get('practice_questions') and len(content['practice_questions']) > 0:
+                            st.markdown("### ❓ Practice Questions")
+                            for q in content['practice_questions']:
+                                if q and 'coming soon' not in q.lower():
+                                    st.markdown(f"• {q}")
                         
                         # Learning tools
                         st.markdown("---")
@@ -225,26 +244,27 @@ if subjects:
                         with tool_cols[0]:
                             if st.button("✨ AI Summary", use_container_width=True):
                                 with st.spinner("Creating summary..."):
-                                    summary = gemini_helper.summarize_content(content['content'], for_child=True)
-                                    st.markdown(f'<div style="background: #e3f2fd; padding: 1rem; border-radius: 10px;">🤖 {summary}</div>', unsafe_allow_html=True)
-                                    data_manager.award_points(5, "for getting a summary!", category="ai")
+                                    if content.get('content'):
+                                        summary = gemini_helper.summarize_content(content['content'], for_child=True)
+                                        st.markdown(f'<div style="background: #e3f2fd; padding: 1rem; border-radius: 10px;">🤖 {summary}</div>', unsafe_allow_html=True)
+                                        data_manager.award_points(5, "for getting a summary!", category="ai")
+                                    else:
+                                        st.info("Content not available for summary yet.")
                         
                         with tool_cols[1]:
-                            if st.button("📝 Practice Questions", use_container_width=True):
-                                if content['practice_questions']:
-                                    st.markdown("### ❓ Practice Questions")
-                                    for q in content['practice_questions']:
-                                        st.markdown(f"• {q}")
-                                else:
-                                    st.info("Practice questions coming soon!")
+                            if st.button("📝 Practice Mode", use_container_width=True):
+                                st.info("Go to the Practice section for quizzes!")
                         
-                        if not is_completed:
+                        # Mark as completed button
+                        if not is_completed and content.get('content'):
                             st.markdown("---")
                             if st.button("✅ Mark as Completed", use_container_width=True):
                                 data_manager.complete_chapter(chapter_data['title'], subject_data['name'])
                                 st.balloons()
                                 st.success(f"🎉 Congratulations! You completed {chapter_data['title']}! +50 points!")
                                 st.rerun()
+                    else:
+                        st.error(f"Chapter not found: {st.session_state.current_chapter}")
                 else:
                     st.info("👈 Select a chapter from the left to start learning!")
     else:
