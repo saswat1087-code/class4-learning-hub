@@ -5,6 +5,7 @@ Interactive quiz system with multiple question types, scoring, and progress trac
 
 import streamlit as st
 import random
+import re
 from datetime import datetime
 from utils.data_manager import data_manager
 from utils import get_gemini_helper
@@ -34,6 +35,8 @@ if 'quiz_chapter' not in st.session_state:
     st.session_state.quiz_chapter = None
 if 'show_results' not in st.session_state:
     st.session_state.show_results = False
+if 'quiz_score' not in st.session_state:
+    st.session_state.quiz_score = 0
 
 # Custom CSS
 st.markdown("""
@@ -67,6 +70,12 @@ st.markdown("""
     font-weight: bold;
     margin: 0.5rem 0;
 }
+.option-btn {
+    display: block;
+    width: 100%;
+    margin: 8px 0;
+    text-align: left;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -81,6 +90,58 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+def generate_questions_from_chapter(content: str, chapter_title: str, num_questions: int = 5) -> list:
+    """Generate meaningful quiz questions from chapter content"""
+    questions = []
+    
+    # Extract key points and vocabulary from content
+    key_points = []
+    vocab_words = []
+    
+    # Parse the content to extract key points
+    points_match = re.search(r'## Key Points\s+(.*?)(?=##|$)', content, re.DOTALL)
+    if points_match:
+        points_text = points_match.group(1)
+        points = re.findall(r'[-•*]\s*(.+?)(?=\n[-•*]|\n\n|$)', points_text, re.DOTALL)
+        key_points = [p.strip() for p in points if p.strip()]
+    
+    # Extract vocabulary
+    vocab_match = re.search(r'## Vocabulary\s+(.*?)(?=##|$)', content, re.DOTALL)
+    if vocab_match:
+        vocab_text = vocab_match.group(1)
+        vocab_items = re.findall(r'\*\*(.*?)\*\*', vocab_text)
+        vocab_words = [v.strip() for v in vocab_items if v.strip()]
+    
+    # Get practice questions from chapter
+    practice_qs_match = re.search(r'## Practice Questions\s+(.*?)(?=##|$)', content, re.DOTALL)
+    if practice_qs_match:
+        practice_text = practice_qs_match.group(1)
+        practice_qs = re.findall(r'[-•*]\s*(.+?)(?=\n[-•*]|\n\n|$)', practice_text, re.DOTALL)
+        if practice_qs:
+            for q in practice_qs[:num_questions]:
+                questions.append({
+                    'question': q.strip(),
+                    'type': 'open'
+                })
+    
+    # If no practice questions, create from key points
+    if not questions and key_points:
+        for i, point in enumerate(key_points[:num_questions]):
+            questions.append({
+                'question': f"What is meant by: '{point[:50]}...'?",
+                'type': 'open'
+            })
+    
+    # If still no questions, create basic ones from chapter title
+    if not questions:
+        questions = [
+            {'question': f'What is the main topic of {chapter_title}?', 'type': 'open'},
+            {'question': f'Why is {chapter_title} important to learn?', 'type': 'open'},
+            {'question': f'Can you explain one key concept from {chapter_title}?', 'type': 'open'}
+        ]
+    
+    return questions[:num_questions]
+
 # Get subjects for quiz selection
 subjects = github_storage.get_subjects()
 
@@ -91,39 +152,35 @@ if not st.session_state.quiz_active and not st.session_state.show_results:
         subject_names = [s['name'] for s in subjects]
         selected_subject = st.selectbox("Select Subject:", subject_names)
         
-        # Get chapters for selected subject
         subject_data = next((s for s in subjects if s['name'] == selected_subject), None)
         if subject_data:
-            chapters = github_storage.get_chapters(subject_data['path'])
+            chapters = github_storage.get_chapters(subject_data['folder_name'])
             if chapters:
                 chapter_names = [c['title'] for c in chapters]
                 selected_chapter = st.selectbox("Select Chapter:", chapter_names)
                 
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    num_questions = st.selectbox("Number of questions:", [3, 5, 10], index=0)
+                
+                with col2:
+                    quiz_type = st.selectbox("Quiz type:", ["Easy", "Medium", "Hard"], index=0)
+                
                 if st.button("🚀 Start Quiz", use_container_width=True, type="primary"):
-                    # Create sample quiz questions from chapter content
                     chapter_data = next((c for c in chapters if c['title'] == selected_chapter), None)
                     if chapter_data:
-                        content = github_storage.get_chapter_content(subject_data['path'], chapter_data['id'])
+                        content_data = github_storage.get_chapter_content(subject_data['folder_name'], chapter_data['id'])
+                        chapter_content = content_data.get('content', '')
                         
-                        # Create questions from content
-                        questions = []
-                        if content['practice_questions']:
-                            for i, q in enumerate(content['practice_questions'][:5]):
-                                questions.append({
-                                    'question': q,
-                                    'options': ['A) Yes', 'B) No', 'C) Maybe', 'D) Not sure'],
-                                    'correct': 'A',
-                                    'explanation': 'Think about what you learned in this chapter!'
-                                })
+                        if chapter_content:
+                            questions = generate_questions_from_chapter(chapter_content, selected_chapter, num_questions)
                         else:
                             # Fallback questions
                             questions = [
-                                {
-                                    'question': f"What is the main topic of {selected_chapter}?",
-                                    'options': ['A) Option 1', 'B) Option 2', 'C) Option 3', 'D) Option 4'],
-                                    'correct': 'A',
-                                    'explanation': 'Review the chapter to find the answer!'
-                                }
+                                {'question': f'What did you learn in {selected_chapter}?', 'type': 'open'},
+                                {'question': f'Why is {selected_chapter} important?', 'type': 'open'},
+                                {'question': f'Can you give an example related to {selected_chapter}?', 'type': 'open'}
                             ]
                         
                         st.session_state.quiz_questions_list = questions
@@ -132,6 +189,7 @@ if not st.session_state.quiz_active and not st.session_state.show_results:
                         st.session_state.quiz_active = True
                         st.session_state.current_question_index = 0
                         st.session_state.user_answers = []
+                        st.session_state.quiz_score = 0
                         st.session_state.quiz_start_time = datetime.now()
                         st.session_state.show_results = False
                         st.rerun()
@@ -156,54 +214,66 @@ if st.session_state.quiz_active:
         st.markdown('<div class="quiz-container">', unsafe_allow_html=True)
         st.markdown(f'<div class="question-text">📝 {current_q["question"]}</div>', unsafe_allow_html=True)
         
-        st.markdown("### Choose your answer:")
+        st.markdown("### ✍️ Your Answer:")
         
-        selected_option = st.session_state.user_answers[current_idx] if current_idx < len(st.session_state.user_answers) else None
+        # For open-ended questions, use text area
+        user_input = st.text_area(
+            "Type your answer here:",
+            key=f"answer_{current_idx}",
+            height=100,
+            placeholder="Write your answer in your own words..."
+        )
         
-        options = current_q.get('options', ['A) Option 1', 'B) Option 2', 'C) Option 3', 'D) Option 4'])
-        
-        for option in options:
-            if st.button(option, key=f"q{current_idx}_{option}", use_container_width=True):
-                if current_idx >= len(st.session_state.user_answers):
-                    st.session_state.user_answers.append(option[0])
-                else:
-                    st.session_state.user_answers[current_idx] = option[0]
-                st.rerun()
-        
-        st.markdown("---")
         col1, col2, col3 = st.columns([1, 2, 1])
         
         with col2:
             if current_idx < len(questions) - 1:
                 if st.button("Next Question ▶", use_container_width=True, type="primary"):
-                    if current_idx < len(st.session_state.user_answers):
+                    if user_input.strip():
+                        if current_idx >= len(st.session_state.user_answers):
+                            st.session_state.user_answers.append(user_input)
+                        else:
+                            st.session_state.user_answers[current_idx] = user_input
                         st.session_state.current_question_index += 1
                         st.rerun()
                     else:
-                        st.warning("Please select an answer before continuing!")
+                        st.warning("Please write your answer before continuing!")
             else:
                 if st.button("📊 Submit Quiz", use_container_width=True, type="primary"):
-                    if len(st.session_state.user_answers) == len(questions):
-                        score = sum(1 for i, q in enumerate(questions) 
-                                   if i < len(st.session_state.user_answers) and 
-                                   st.session_state.user_answers[i] == q['correct'])
+                    if user_input.strip():
+                        if current_idx >= len(st.session_state.user_answers):
+                            st.session_state.user_answers.append(user_input)
+                        else:
+                            st.session_state.user_answers[current_idx] = user_input
                         
+                        # Calculate score (give points for attempting)
+                        score = len([a for a in st.session_state.user_answers if a.strip()])
+                        st.session_state.quiz_score = score
                         st.session_state.quiz_active = False
                         st.session_state.show_results = True
-                        st.session_state.quiz_score = score
                         
-                        points_earned = score * 10
-                        data_manager.award_points(points_earned, f"for scoring {score}/{len(questions)} on quiz!", category="quiz")
+                        points_earned = score * 5
+                        data_manager.award_points(points_earned, f"for completing the quiz on {st.session_state.quiz_chapter}!", category="quiz")
                         
+                        # Save to quiz scores
+                        quiz_name = f"{st.session_state.quiz_subject}_{st.session_state.quiz_chapter}"
+                        st.session_state.quiz_scores[quiz_name] = {
+                            'score': score,
+                            'total': len(questions),
+                            'percentage': (score/len(questions))*100,
+                            'date': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            'subject': st.session_state.quiz_subject
+                        }
                         st.rerun()
                     else:
-                        st.warning(f"Please answer all questions! ({len(st.session_state.user_answers)}/{len(questions)} answered)")
+                        st.warning("Please answer the question before submitting!")
         
         st.markdown('</div>', unsafe_allow_html=True)
 
 # Results Display
 if st.session_state.show_results:
     questions = st.session_state.quiz_questions_list
+    answers = st.session_state.user_answers
     score = st.session_state.quiz_score
     total = len(questions)
     percentage = (score / total) * 100 if total > 0 else 0
@@ -219,7 +289,7 @@ if st.session_state.show_results:
         <div class="score-card">
             <div>🏆 PERFECT SCORE! 🏆</div>
             <div class="score-number">{score}/{total}</div>
-            <div>{percentage:.0f}% - Outstanding! ⭐</div>
+            <div>{percentage:.0f}% - Outstanding! You answered all questions! ⭐</div>
         </div>
         """, unsafe_allow_html=True)
     elif percentage >= 70:
@@ -227,15 +297,26 @@ if st.session_state.show_results:
         <div class="score-card">
             <div>🌟 EXCELLENT! 🌟</div>
             <div class="score-number">{score}/{total}</div>
-            <div>{percentage:.0f}% - Great job! ⭐</div>
+            <div>{percentage:.0f}% - Great job! Keep learning! ⭐</div>
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown(f"""
         <div class="score-card">
-            <div>💪 KEEP PRACTICING! 💪</div>
+            <div>💪 GOOD EFFORT! 💪</div>
             <div class="score-number">{score}/{total}</div>
-            <div>{percentage:.0f}% - Try again to improve!</div>
+            <div>{percentage:.0f}% - Review the chapter and try again!</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Show answers review
+    st.markdown("### 📝 Your Answers")
+    for i, q in enumerate(questions):
+        answer = answers[i] if i < len(answers) else "Not answered"
+        st.markdown(f"""
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 10px; margin: 0.5rem 0;">
+            <strong>Q{i+1}:</strong> {q['question']}<br>
+            <strong>Your answer:</strong> {answer[:200]}{'...' if len(answer) > 200 else ''}
         </div>
         """, unsafe_allow_html=True)
     
@@ -280,6 +361,18 @@ with col2:
 
 with col3:
     st.metric("Points Earned", st.session_state.points_earned)
+
+# Study Tips
+with st.expander("💡 Quiz Tips"):
+    st.markdown("""
+    **📚 How to do well on quizzes:**
+    
+    1. **Read the chapter carefully** before taking the quiz
+    2. **Take notes** while studying
+    3. **Write answers in your own words** - this helps you remember better
+    4. **Review your answers** before submitting
+    5. **Learn from mistakes** - review questions you found difficult
+    """)
 
 # Footer
 st.markdown("---")
