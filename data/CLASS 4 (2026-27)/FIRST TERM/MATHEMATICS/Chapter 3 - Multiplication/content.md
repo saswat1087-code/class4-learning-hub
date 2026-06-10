@@ -16,3 +16,47 @@ Memorizing tables makes multiplication faster!
 Example: 234 × 45 = ?
 
 Method 1 - Column Method:
+
+234
+× 45
+
+1170 (234 × 5)
+
+9360 (234 × 40)
+10530
+
+
+Method 2 - Expanded Form:
+234 × 45 = 234 × (40 + 5)
+= (234 × 40) + (234 × 5)
+= 9360 + 1170
+= 10,530
+
+**Estimation:** Round numbers to estimate products
+- 234 × 48 ≈ 200 × 50 = 10,000 (close to actual answer)
+
+## Key Points
+- Multiplication = repeated addition
+- Multiply by ones place first, then tens place
+- Add the partial products
+- Use estimation to check if answer is reasonable
+- Learn multiplication tables up to 20 for speed
+
+## Vocabulary
+- **Multiplication**: Repeated addition of the same number
+- **Product**: The answer in multiplication
+- **Factor**: The numbers being multiplied
+- **Times Tables**: A list of multiplication facts
+- **Estimate**: A rough calculation
+- **Partial Product**: Intermediate result when multiplying
+- **Column Method**: Writing numbers vertically to multiply
+
+## Fun Fact
+The multiplication sign (×) was invented by William Oughtred in 1631. Before that, people used a dot (·) or just put numbers next to each other! ✖️
+
+## Practice Questions
+1. What is 345 × 28? (Use column method)
+2. If one book costs ₹125, how much do 25 books cost?
+3. Estimate: 456 × 52 ≈ ?
+4. Find the product: 789 × 36
+5. A factory produces 450 bottles per day. How many in 30 days?
