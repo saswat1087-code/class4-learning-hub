@@ -239,7 +239,7 @@ def init_session_state():
         'badges': [],
         'daily_streak': 0,
         'last_active': None,
-        'user_name': "Learner",
+        'user_name': os.getenv("STUDENT_NAME", "Mayra"),
         'total_questions_answered': 0,
         'correct_answers': 0,
         'study_time': 0,
