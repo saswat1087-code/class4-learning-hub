@@ -1,3 +1,8 @@
+"""
+Class 4 Learning Hub - Main Application
+An AI-powered interactive learning platform for Class 4 students
+"""
+
 import streamlit as st
 import os
 import random
@@ -97,6 +102,25 @@ def load_css():
         box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
     }
     
+    /* Success/Info/Warning boxes */
+    .stAlert {
+        border-radius: 10px;
+        animation: fadeIn 0.5s ease;
+    }
+    
+    /* Metric styling */
+    .stMetric {
+        background: white;
+        padding: 1rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    
+    /* Progress bar styling */
+    .stProgress > div > div {
+        background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+    
     /* Animations */
     @keyframes fadeInDown {
         from {
@@ -131,6 +155,15 @@ def load_css():
         }
     }
     
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+    
     @keyframes bounce {
         0%, 100% {
             transform: translateY(0);
@@ -140,10 +173,12 @@ def load_css():
         }
     }
     
+    /* Celebration animation */
     .celebration {
         animation: bounce 0.6s ease;
     }
     
+    /* Badge styling */
     .badge {
         display: inline-block;
         padding: 5px 10px;
@@ -155,6 +190,12 @@ def load_css():
         font-weight: 600;
     }
     
+    /* Sidebar styling */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    
+    /* Footer */
     .footer {
         text-align: center;
         padding: 2rem;
@@ -163,6 +204,7 @@ def load_css():
         font-size: 0.9rem;
     }
     
+    /* Responsive design */
     @media (max-width: 768px) {
         .main-header h1 {
             font-size: 1.8rem;
@@ -180,10 +222,11 @@ load_css()
 
 # Import utilities
 from utils.data_manager import data_manager
-from utils.groq_helper import get_groq_helper
+from utils import get_gemini_helper
+from utils.github_storage import github_storage
 
 # Initialize helpers
-groq_helper = get_groq_helper()
+gemini_helper = get_gemini_helper()
 
 # Initialize session state variables
 def init_session_state():
@@ -270,8 +313,10 @@ with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2948/2948228.png", width=80)
     st.title("🎒 Class 4 Hub")
     
+    # User info
     st.markdown(f"### 👋 Hello, {st.session_state.user_name}!")
     
+    # Progress metrics
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1:
@@ -279,67 +324,69 @@ with st.sidebar:
     with col2:
         st.metric("🏆 Badges", len(st.session_state.badges))
     
+    # Streak display
     if st.session_state.current_streak > 0:
         st.markdown(f"🔥 **Current Streak:** {st.session_state.current_streak} days")
+        if st.session_state.longest_streak > 0:
+            st.markdown(f"🏆 **Best Streak:** {st.session_state.longest_streak} days")
     
+    # Progress bar
     progress_percent = min(st.session_state.points_earned / 500, 1.0)
     st.progress(progress_percent)
-    st.caption(f"Level {int(progress_percent * 10) + 1}")
+    st.caption(f"Level {int(progress_percent * 10) + 1} • Next level: {500 - st.session_state.points_earned} points")
     
+    # Navigation
     st.markdown("---")
     app_mode = st.radio(
         "📖 Navigate to:",
-        ["🏠 Home Dashboard", "📚 Syllabus & Lessons", "🏆 Practice & Tests", "🤖 Exam Buddy AI", "📊 My Progress"],
+        ["🏠 Home Dashboard", "📚 Syllabus & Lessons", "🏆 Practice & Tests", "🤖 Exam Buddy AI", "📊 My Progress", "📁 Resources"],
         index=0
     )
     
+    # Parent Zone
     st.markdown("---")
     with st.expander("👨‍👩‍👧 Parent Zone"):
         admin_password = st.text_input("Enter access code:", type="password")
         if admin_password == "class4teacher2026":
             st.success("✅ Access Granted!")
+            
+            # Get resource statistics
+            stats = github_storage.get_total_resources_count()
+            
             st.info(f"""
             **Learning Report:**
             - Total Points: {st.session_state.points_earned}
             - Quizzes Taken: {len(st.session_state.quiz_scores)}
             - Chapters Completed: {len(st.session_state.completed_chapters)}
             - Badges: {len(st.session_state.badges)}
+            - Current Streak: {st.session_state.current_streak} days
+            
+            **📚 Available Resources:**
+            - Subjects: {stats['subjects']}
+            - Chapters: {stats['chapters']}
+            - Assignments: {stats['assignments']}
+            - Revision Papers: {stats['revision_papers']}
+            - Projects: {stats['projects']}
             """)
+            
+            if st.button("Download Progress Report"):
+                report = data_manager.get_progress_report()
+                st.download_button(
+                    label="📥 Save Report",
+                    data=str(report),
+                    file_name=f"progress_{datetime.now().strftime('%Y%m%d')}.txt"
+                )
+        else:
+            st.info("🔒 Parent access requires a code")
     
-    if groq_helper.is_available:
-        st.success("✅ AI Assistant: Ready (Groq/Llama)")
+    # AI Status
+    st.markdown("---")
+    if gemini_helper.is_available:
+        st.success("✅ AI Assistant: Ready")
+        st.caption("Powered by Groq/Llama")
     else:
-        st.warning("⚠️ AI features limited - Add GROQ_API_KEY")
-
-# Syllabus data
-SYLLABUS_DATA = {
-    "Computer Science": {
-        "Chapter 1: Storage and Memory Devices": "Data is raw facts. Information is processed data. RAM is volatile random-access memory. ROM is non-volatile read-only memory. Hard disks and pen drives are secondary storage.",
-        "Chapter 2: GUI Operating System": "An operating system manages computer hardware and software. Windows 11 is a Graphical User Interface (GUI) OS using icons and menus.",
-        "Chapter 3: Internet and Email": "The internet connects computers worldwide. Email lets us send messages online. Always be safe online!"
-    },
-    "English Literature": {
-        "Chapter 1: The Magic Garden": "A beautiful garden where flowers and plants can talk. They teach us about friendship and caring for nature.",
-        "Chapter 2: The Enchanted Castle": "Gerald, Jimmy, and Kathleen discover a castle with a hedge maze. They find a sleeping princess at the center.",
-        "Poem: A Home Song": "The poem describes how a true home is built on love, peace, and coexistence with nature."
-    },
-    "Mathematics": {
-        "Chapter 1: Large Numbers": "Numbers up to 100,000. Learn place value, comparing numbers, and ordering.",
-        "Chapter 2: Addition and Subtraction": "Adding and subtracting 5-digit numbers with regrouping.",
-        "Chapter 3: Multiplication": "Multiplying 3-digit numbers by 2-digit numbers."
-    },
-    "Science": {
-        "Chapter 1: Plants": "Parts of a plant - roots, stem, leaves, flowers. Photosynthesis and how plants make food.",
-        "Chapter 2: Animals": "Classification of animals - herbivores, carnivores, omnivores. Animal habitats.",
-        "Chapter 3: Our Body": "Major organs - heart, lungs, brain, stomach. How they work together."
-    }
-}
-
-PROJECTS_DATA = {
-    "English Lit Project": "Task: Create a 3D model of a 'Hanging Garden Tree House' based on the poem 'A Home Song'. Deadline: June 30, 2026.",
-    "Science Project": "Task: Make a poster showing the life cycle of a plant.",
-    "Computer Project": "Task: Create a digital drawing in MS Paint showing your dream house."
-}
+        st.warning("⚠️ AI features limited")
+        st.caption("Add GROQ_API_KEY to secrets")
 
 # Main content area based on navigation
 st.markdown('<div class="main-header">', unsafe_allow_html=True)
@@ -349,10 +396,16 @@ if app_mode == "🏠 Home Dashboard":
     st.markdown(f'<p>Hello <strong>{st.session_state.user_name}</strong>! Ready for an amazing learning adventure today? 🚀</p>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
     
+    # Get resource statistics
+    stats = github_storage.get_total_resources_count()
+    
+    # Motivational quotes
     motivational_quotes = [
         "💫 \"The more you read, the more things you will know!\"",
-        "🎯 \"Practice makes progress!\"",
-        "🌟 \"Every expert was once a beginner!\""
+        "🎯 \"Practice makes progress, not perfect!\"",
+        "🌟 \"Every expert was once a beginner!\"",
+        "📚 \"Learning is a treasure that will follow you everywhere!\"",
+        "🚀 \"Your attitude determines your direction!\""
     ]
     st.info(random.choice(motivational_quotes))
     
@@ -360,177 +413,67 @@ if app_mode == "🏠 Home Dashboard":
     
     with col1:
         st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("📚 Today's Goal")
-        st.write("Complete one chapter and earn 50 points!")
+        st.subheader("📚 Your Progress")
+        st.write(f"⭐ **Points:** {st.session_state.points_earned}")
+        st.write(f"🏆 **Badges:** {len(st.session_state.badges)}")
+        st.write(f"📖 **Chapters:** {len(st.session_state.completed_chapters)}/20")
         st.markdown('</div>', unsafe_allow_html=True)
         
     with col2:
         st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("🎯 Daily Challenge")
-        st.write("Answer 5 questions correctly today!")
+        st.subheader("📚 Available Resources")
+        st.write(f"📚 **Subjects:** {stats['subjects']}")
+        st.write(f"📖 **Chapters:** {stats['chapters']}")
+        st.write(f"📝 **Assignments:** {stats['assignments']}")
         st.markdown('</div>', unsafe_allow_html=True)
         
     with col3:
         st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("🏆 Achievements")
-        st.write(f"⭐ Total Points: {st.session_state.points_earned}")
-        st.write(f"🎖️ Badges: {len(st.session_state.badges)}")
+        st.subheader("🎯 Today's Goal")
+        remaining = 50 - (st.session_state.points_earned % 50)
+        if remaining > 0:
+            st.write(f"Earn {remaining} more points to reach next level!")
+        else:
+            st.write("🎉 You're on a roll! Keep going!")
+        if st.button("Take a Quiz →", key="home_quiz"):
+            st.switch_page("pages/03_🏆_Practice.py")
         st.markdown('</div>', unsafe_allow_html=True)
     
+    # Quick actions
     st.markdown("---")
-    st.subheader("📖 Featured Project")
-    st.info(f"**{list(PROJECTS_DATA.keys())[0]}**\n\n{list(PROJECTS_DATA.values())[0]}")
+    st.subheader("📖 Quick Actions")
+    quick_cols = st.columns(4)
+    
+    with quick_cols[0]:
+        if st.button("📚 Study Materials", use_container_width=True):
+            st.switch_page("pages/02_📚_Syllabus.py")
+    
+    with quick_cols[1]:
+        if st.button("📝 Assignments", use_container_width=True):
+            st.switch_page("pages/06_📁_Resources.py")
+    
+    with quick_cols[2]:
+        if st.button("🤖 Ask AI", use_container_width=True):
+            st.switch_page("pages/04_🤖_Exam_Buddy.py")
+    
+    with quick_cols[3]:
+        if st.button("🏆 View Progress", use_container_width=True):
+            st.switch_page("pages/05_📊_Progress.py")
 
 elif app_mode == "📚 Syllabus & Lessons":
-    st.markdown('<h1>📚 Syllabus & Lessons</h1>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        subject = st.selectbox("📖 Select Subject:", list(SYLLABUS_DATA.keys()))
-    
-    with col2:
-        chapters = list(SYLLABUS_DATA[subject].keys())
-        chapter = st.selectbox("📑 Select Chapter:", chapters)
-    
-    st.markdown("---")
-    st.markdown(f'<div class="card">', unsafe_allow_html=True)
-    st.subheader(f"📖 {chapter}")
-    content = SYLLABUS_DATA[subject][chapter]
-    st.write(content)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("✨ AI Summary", use_container_width=True):
-            with st.spinner("Making it easier to understand..."):
-                summary = groq_helper.summarize_content(content)
-                st.markdown(f'<div class="chat-message">🤖 <strong>Exam Buddy says:</strong><br>{summary}</div>', unsafe_allow_html=True)
-                award_points(5, "for asking for a summary!")
-    
-    with col2:
-        if st.button("✅ Mark as completed", use_container_width=True):
-            chapter_key = f"{subject}: {chapter}"
-            if chapter_key not in st.session_state.completed_chapters:
-                st.session_state.completed_chapters.append(chapter_key)
-                award_points(20, f"for completing {chapter}!")
-                st.balloons()
-                st.success(f"🎉 Great job completing {chapter}! 🌟")
-            else:
-                st.info("📚 You've already completed this chapter!")
+    st.switch_page("pages/02_📚_Syllabus.py")
 
 elif app_mode == "🏆 Practice & Tests":
-    st.markdown('<h1>🏆 Practice & Tests</h1>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        quiz_subject = st.selectbox("Choose subject:", list(SYLLABUS_DATA.keys()), key="quiz_subject")
-    
-    with col2:
-        quiz_chapter = st.selectbox("Choose chapter:", list(SYLLABUS_DATA[quiz_subject].keys()), key="quiz_chapter")
-    
-    if st.button("🎲 Generate Quiz", use_container_width=True):
-        content = SYLLABUS_DATA[quiz_subject][quiz_chapter]
-        with st.spinner("Creating your personalized quiz..."):
-            questions = groq_helper.create_quiz_questions(content, num_questions=3)
-            if questions:
-                st.session_state.quiz_questions = questions
-                st.success("✅ Quiz ready! Answer the questions below:")
-                
-                score = 0
-                for i, q in enumerate(questions):
-                    st.markdown(f"### Q{i+1}: {q.get('question', 'Question')}")
-                    options = q.get('options', [])
-                    answer = st.radio(f"Choose your answer for Q{i+1}:", options, key=f"q_{i}")
-                    if st.button(f"Check Q{i+1}", key=f"check_{i}"):
-                        if answer and answer[0] == q.get('answer', 'A'):
-                            st.success("✅ Correct! " + q.get('explanation', 'Great job!'))
-                            score += 1
-                            award_points(10, "for correct answer!")
-                        else:
-                            st.info("💡 " + q.get('explanation', 'Keep practicing!'))
-                
-                if st.button("Submit All"):
-                    st.success(f"🎉 You scored {score}/{len(questions)}!")
-                    award_points(score * 10, f"for scoring {score}/{len(questions)}!")
-            else:
-                st.warning("Try the random quiz for now!")
+    st.switch_page("pages/03_🏆_Practice.py")
 
 elif app_mode == "🤖 Exam Buddy AI":
-    st.markdown('<h1>🤖 Exam Buddy AI</h1>', unsafe_allow_html=True)
-    st.markdown('<p>Your AI study partner - ask me anything!</p>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    for message in st.session_state.chat_history[-10:]:
-        if message["role"] == "user":
-            st.markdown(f'<div class="user-message">👤 {message["content"]}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div class="chat-message">🤖 {message["content"]}</div>', unsafe_allow_html=True)
-    
-    quick_q_cols = st.columns(3)
-    quick_questions = [
-        "Help me study for Computer Science",
-        "Explain multiplication simply",
-        "Give me a fun fact about plants"
-    ]
-    
-    for idx, q in enumerate(quick_questions):
-        with quick_q_cols[idx % 3]:
-            if st.button(q, use_container_width=True):
-                with st.spinner("Thinking..."):
-                    response = groq_helper.generate_response(q)
-                    st.session_state.chat_history.append({"role": "user", "content": q})
-                    st.session_state.chat_history.append({"role": "assistant", "content": response})
-                    award_points(2, "for asking a question!")
-                    st.rerun()
-    
-    user_input = st.text_input("💬 Ask Exam Buddy anything:", key="chat_input")
-    
-    if user_input:
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
-        with st.spinner("🤖 Thinking..."):
-            response = groq_helper.generate_response(user_input)
-            st.session_state.chat_history.append({"role": "assistant", "content": response})
-            award_points(3, "for learning with Exam Buddy!")
-            st.rerun()
-    
-    if st.button("🗑️ Clear Chat History"):
-        st.session_state.chat_history = []
-        st.success("Chat history cleared!")
-        st.rerun()
+    st.switch_page("pages/04_🤖_Exam_Buddy.py")
 
 elif app_mode == "📊 My Progress":
-    st.markdown('<h1>📊 My Progress Report</h1>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("⭐ Total Points", st.session_state.points_earned)
-    with col2:
-        st.metric("📚 Chapters Done", len(st.session_state.completed_chapters))
-    with col3:
-        st.metric("🏆 Badges Earned", len(st.session_state.badges))
-    with col4:
-        st.metric("🔥 Current Streak", f"{st.session_state.current_streak} days")
-    
-    if st.session_state.badges:
-        st.subheader("🏅 Your Badges")
-        badge_cols = st.columns(4)
-        for idx, badge in enumerate(st.session_state.badges[:8]):
-            with badge_cols[idx % 4]:
-                st.markdown(f'<div class="badge">🏆 {badge}</div>', unsafe_allow_html=True)
-    else:
-        st.info("🌟 Complete quizzes and chapters to earn badges!")
-    
-    if st.session_state.completed_chapters:
-        st.subheader("✅ Completed Chapters")
-        for chapter in st.session_state.completed_chapters:
-            st.success(f"📖 {chapter}")
+    st.switch_page("pages/05_📊_Progress.py")
+
+elif app_mode == "📁 Resources":
+    st.switch_page("pages/06_📁_Resources.py")
 
 # Footer
 st.markdown('<div class="footer">', unsafe_allow_html=True)
